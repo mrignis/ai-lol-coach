@@ -110,9 +110,21 @@ export async function getMatches(ids, platform, onProgress) {
 }
 
 // Pull out just this player's stats from a full match object.
-export function extractParticipant(match, puuid) {
+// Match by puuid first; fall back to Riot ID (gameName#tagLine) because
+// Match-V5 puuids are scoped to the API key that fetched the data — a match
+// cached under an old/rotated key won't match the current account puuid, but
+// riotIdGameName/riotIdTagline stay stable. This keeps cached games usable
+// across daily dev-key rotation.
+export function extractParticipant(match, puuid, riotId = null) {
   const info = match.info;
-  const p = info.participants.find(x => x.puuid === puuid);
+  let p = info.participants.find(x => x.puuid === puuid);
+  if (!p && riotId && riotId.gameName) {
+    const g = riotId.gameName.toLowerCase();
+    const t = (riotId.tagLine || '').toLowerCase();
+    p = info.participants.find(x =>
+      (x.riotIdGameName || '').toLowerCase() === g &&
+      (!t || (x.riotIdTagline || '').toLowerCase() === t));
+  }
   if (!p) return null;
 
   // gameDuration is seconds when gameEndTimestamp exists, else milliseconds (legacy).

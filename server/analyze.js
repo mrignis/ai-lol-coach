@@ -30,7 +30,8 @@ export async function analyzePlayer(riotId, platform, { onProgress } = {}) {
   }
 
   const matches = await getMatches(ids, platform, onProgress);
-  const games = matches.map(m => extractParticipant(m, puuid)).filter(Boolean);
+  const identity = { gameName: account.gameName || gameName, tagLine: account.tagLine || tagLine };
+  const games = matches.map(m => extractParticipant(m, puuid, identity)).filter(Boolean);
 
   const played = games.filter(g => !g.remake);
   const wins = played.filter(g => g.win).length;

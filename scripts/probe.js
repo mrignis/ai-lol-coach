@@ -33,7 +33,7 @@ const num = (v, n = 1) => Number(v).toFixed(n);
 
   const matches = await getMatches(ids, platform, (i, n) => process.stdout.write(`\r  fetched ${i}/${n}`));
   process.stdout.write('\r');
-  const games = matches.map(m => extractParticipant(m, account.puuid)).filter(Boolean);
+  const games = matches.map(m => extractParticipant(m, account.puuid, { gameName, tagLine })).filter(Boolean);
 
   console.log(pad('CHAMP', 14) + pad('ROLE', 9) + pad('W/L', 4) + pad('KDA', 12) + pad('CS/m', 7) + pad('Vis/m', 7) + pad('KP', 6) + 'Dur');
   for (const g of games) {
