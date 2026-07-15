@@ -122,6 +122,32 @@ body {
 .game-row .g-cs { color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .foot { text-align: center; margin-top: 30px; font-size: 11.5px; }
+.foot .link, .link { color: var(--gold); text-decoration: none; }
+.foot .link:hover { text-decoration: underline; }
+
+/* Header nav link to the live companion */
+.head .nav { margin: 10px 0 0; }
+.head .nav a { color: var(--gold); text-decoration: none; font-size: 13px; border: 1px solid var(--line); padding: 5px 12px; border-radius: 999px; }
+.head .nav a:hover { background: var(--panel-2); }
+
+/* Live widget */
+.live-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.live-bar .field { padding: 8px 10px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; margin-left: auto; }
+.dot.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.dot.off { background: var(--red); }
+.status { text-align: center; color: var(--muted); }
+.live-top { display: flex; justify-content: space-between; align-items: baseline; }
+.live-champ { font-size: 17px; font-weight: 700; color: var(--gold-soft); }
+#liveTime { font-variant-numeric: tabular-nums; font-size: 16px; }
+.live-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+.live-stat { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px; text-align: center; }
+.live-stat .k { display: block; color: var(--muted); font-size: 11px; }
+.live-stat .v { display: block; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.live-nudges { display: flex; flex-direction: column; gap: 8px; }
+.nudge { padding: 11px 13px; border-radius: 9px; font-size: 14px; line-height: 1.45; border-left: 3px solid; }
+.nudge.info { background: rgba(10, 200, 240, .08); border-color: var(--blue); }
+.nudge.warn { background: rgba(229, 85, 78, .1); border-color: var(--red); }
 
 @media (max-width: 480px) {
   .head h1 { font-size: 25px; }

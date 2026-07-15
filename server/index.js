@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { config, PLATFORMS } from './config.js';
 import { analyzePlayer } from './analyze.js';
+import { fetchLiveData, buildLiveResponse } from './live.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -38,6 +39,20 @@ app.post('/api/analyze', async (req, res) => {
     };
     console.error('[analyze]', e.message);
     res.status(code).json({ error: messages[code] || e.message || 'Analysis failed' });
+  }
+});
+
+// Live in-game companion — reads League's local Live Client Data API.
+// Returns {inGame:false} when no game is running (the widget just waits).
+app.get('/api/live', async (req, res) => {
+  const bucket = ['low', 'mid', 'high'].includes(req.query.bucket) ? req.query.bucket : 'mid';
+  try {
+    const data = await fetchLiveData();
+    res.json(buildLiveResponse(data, bucket));
+  } catch (e) {
+    if (e.code === 'NOGAME') return res.json({ inGame: false });
+    console.error('[live]', e.message);
+    res.json({ inGame: false, error: 'live_read_failed' });
   }
 });
 

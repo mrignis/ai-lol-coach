@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Live Companion · AI LoL Coach</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header class="head">
+      <h1>Live Companion</h1>
+      <p class="tag">In-game nudges from the official Live Client Data API · <em>informational only</em></p>
+    </header>
+
+    <div class="live-bar">
+      <label class="muted" for="bucket">Your rank tier:</label>
+      <select id="bucket" class="field">
+        <option value="low">Iron–Silver</option>
+        <option value="mid" selected>Gold–Plat</option>
+        <option value="high">Emerald+</option>
+      </select>
+      <span id="dot" class="dot off" title="connection"></span>
+    </div>
+
+    <div id="status" class="card status">Waiting for a game… launch League and load into a match. This page checks every few seconds.</div>
+
+    <div id="widget" hidden>
+      <div class="card live-me">
+        <div class="live-top">
+          <span id="liveChamp" class="live-champ"></span>
+          <span id="liveTime" class="muted"></span>
+        </div>
+        <div id="liveStats" class="live-stats"></div>
+      </div>
+      <div class="card">
+        <h3>Right now</h3>
+        <div id="liveNudges" class="live-nudges"></div>
+      </div>
+    </div>
+
+    <footer class="foot muted">
+      <a href="/" class="link">← post-game analysis</a> ·
+      ToS-safe: read-only, no automation. Show this on a 2nd monitor or in windowed mode.
+    </footer>
+  </main>
+  <script src="live.js"></script>
+</body>
+</html>
