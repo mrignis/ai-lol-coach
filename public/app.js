@@ -13,13 +13,18 @@ const LOADING_STEPS = [
 let loadTimer = null;
 
 async function loadRegions() {
+  // Remember the player's last region so they don't keep re-picking it.
+  const saved = localStorage.getItem('lolcoach_region') || 'euw1';
   try {
     const { platforms } = await (await fetch('/api/regions')).json();
     $('region').innerHTML = platforms.map(p => `<option value="${p.id}">${p.label}</option>`).join('');
-    $('region').value = 'euw1';
+    $('region').value = saved;
   } catch {
     $('region').innerHTML = '<option value="euw1">EUW</option>';
   }
+  $('region').addEventListener('change', () => {
+    localStorage.setItem('lolcoach_region', $('region').value);
+  });
 }
 
 function startLoading() {
