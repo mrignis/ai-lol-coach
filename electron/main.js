@@ -59,6 +59,17 @@ function createWindow() {
   win.setAlwaysOnTop(true, 'screen-saver');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.loadURL(OVERLAY_URL);
+
+  // When the game window is focused it can jump above ours, so keep
+  // re-asserting top position (without stealing focus from the game).
+  setInterval(() => {
+    if (win && !win.isDestroyed() && win.isVisible() && !clickThrough) {
+      win.setAlwaysOnTop(true, 'screen-saver');
+      win.moveTop();
+    } else if (win && !win.isDestroyed() && win.isVisible()) {
+      win.setAlwaysOnTop(true, 'screen-saver');
+    }
+  }, 1500);
 }
 
 // Ctrl+Shift+X → let clicks pass through to the game (and back).
