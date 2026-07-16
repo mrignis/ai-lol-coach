@@ -39,10 +39,10 @@ let clickThrough = false;
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 340,
-    height: 480,
-    x: 40,
-    y: 70,
+    width: 290,
+    height: 340,
+    x: 24,
+    y: 60,
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
@@ -51,8 +51,8 @@ function createWindow() {
     skipTaskbar: false,
     hasShadow: false,
     fullscreenable: false,
-    minWidth: 260,
-    minHeight: 220,
+    minWidth: 220,
+    minHeight: 130,
     webPreferences: { contextIsolation: true },
   });
   // Float above the game (works when League runs Borderless/Windowed).

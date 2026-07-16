@@ -63,11 +63,47 @@ async function loadAiTip() {
   } catch { /* best-effort */ }
 }
 
-// Overlay mode (?overlay=1): transparent draggable window launched by Electron.
+// ── Overlay mode (?overlay=1): transparent, compact, user-configurable ──
+const OV_KEY = 'lolcoach_overlay_opts';
+const OV_DEFAULTS = { alpha: 85, scale: 100, stats: true, nudges: true, ai: true };
+let ovOpts = (() => {
+  try { return { ...OV_DEFAULTS, ...JSON.parse(localStorage.getItem(OV_KEY) || '{}') }; }
+  catch { return { ...OV_DEFAULTS }; }
+})();
+
+function applyOpts() {
+  document.body.style.setProperty('--ov-alpha', ovOpts.alpha / 100);
+  document.body.style.zoom = ovOpts.scale / 100;
+  $('cardStats').hidden = !ovOpts.stats;
+  $('cardNudges').hidden = !ovOpts.nudges;
+  $('cardAi').hidden = !ovOpts.ai;
+  localStorage.setItem(OV_KEY, JSON.stringify(ovOpts));
+}
+
 if (new URLSearchParams(location.search).get('overlay') === '1') {
   document.body.classList.add('overlay');
   $('ovBar').hidden = false;
   $('ovClose').addEventListener('click', () => window.close());
+  $('ovGear').addEventListener('click', () => { $('ovSettings').hidden = !$('ovSettings').hidden; });
+
+  // Reuse the existing controls: dot goes to the title bar, rank picker into settings.
+  $('ovDotSlot').appendChild($('dot'));
+  $('ovBarSlot').appendChild(document.querySelector('.live-bar'));
+
+  const bind = (id, prop, key, ev) => {
+    const el = $(id);
+    el[prop] = ovOpts[key];
+    el.addEventListener(ev, () => {
+      ovOpts[key] = prop === 'checked' ? el.checked : +el.value;
+      applyOpts();
+    });
+  };
+  bind('optAlpha', 'value', 'alpha', 'input');
+  bind('optScale', 'value', 'scale', 'input');
+  bind('optStats', 'checked', 'stats', 'change');
+  bind('optNudges', 'checked', 'nudges', 'change');
+  bind('optAi', 'checked', 'ai', 'change');
+  applyOpts();
 }
 
 // i18n: language dropdown + translate static text; re-render on switch.

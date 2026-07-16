@@ -10,8 +10,21 @@
   <main class="wrap">
     <div class="ov-bar" id="ovBar" hidden>
       <span class="ov-title" data-i18n="liveTitle">Live Companion</span>
-      <span class="ov-hint">Ctrl+Shift+X · Ctrl+Shift+H</span>
+      <span id="ovDotSlot"></span>
+      <button id="ovGear" class="ov-btn" data-i18n-title="setTitle" title="Settings">⚙</button>
       <button id="ovClose" class="ov-btn" title="Close">✕</button>
+    </div>
+
+    <div id="ovSettings" class="ov-settings" hidden>
+      <label><span data-i18n="setOpacity">Opacity</span><input type="range" id="optAlpha" min="15" max="100" /></label>
+      <label><span data-i18n="setSize">Size</span><input type="range" id="optScale" min="70" max="130" /></label>
+      <div id="ovBarSlot"></div>
+      <div class="ov-row">
+        <label><input type="checkbox" id="optStats" /><span data-i18n="setStats">Stats</span></label>
+        <label><input type="checkbox" id="optNudges" /><span data-i18n="setNudges">Nudges</span></label>
+        <label><input type="checkbox" id="optAi" /><span data-i18n="setAi">AI</span></label>
+      </div>
+      <div class="ov-hint">Ctrl+Shift+X · Ctrl+Shift+H</div>
     </div>
     <header class="head">
       <div class="langbar"><select id="lang" class="field lang" aria-label="Language"></select></div>
@@ -37,18 +50,18 @@
     <div id="status" class="card status" data-i18n="waiting">Waiting for a game… launch League and load into a match.</div>
 
     <div id="widget" hidden>
-      <div class="card live-me">
+      <div class="card live-me" id="cardStats">
         <div class="live-top">
           <span id="liveChamp" class="live-champ"></span>
           <span id="liveTime" class="muted"></span>
         </div>
         <div id="liveStats" class="live-stats"></div>
       </div>
-      <div class="card">
+      <div class="card" id="cardNudges">
         <h3 data-i18n="rightNow">Right now</h3>
         <div id="liveNudges" class="live-nudges"></div>
       </div>
-      <div class="card ai-card">
+      <div class="card ai-card" id="cardAi">
         <h3>🤖 <span data-i18n="aiTitle">AI recommendation</span></h3>
         <div id="aiTip" class="ai-tip muted" data-i18n="aiWait">reading the game…</div>
       </div>

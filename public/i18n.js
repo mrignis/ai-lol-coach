@@ -321,6 +321,24 @@ const EXTRA = {
 };
 for (const l in EXTRA) Object.assign(LANGS[l], EXTRA[l]);
 
+// Overlay settings panel labels.
+const SET_STR = {
+  en: { setTitle: 'Settings', setOpacity: 'Opacity', setSize: 'Size', setStats: 'Stats', setNudges: 'Nudges', setAi: 'AI tip' },
+  uk: { setTitle: 'Налаштування', setOpacity: 'Прозорість', setSize: 'Розмір', setStats: 'Статистика', setNudges: 'Підказки', setAi: 'AI-порада' },
+  fr: { setTitle: 'Paramètres', setOpacity: 'Opacité', setSize: 'Taille', setStats: 'Stats', setNudges: 'Conseils', setAi: 'Conseil IA' },
+  de: { setTitle: 'Einstellungen', setOpacity: 'Deckkraft', setSize: 'Größe', setStats: 'Stats', setNudges: 'Hinweise', setAi: 'KI-Tipp' },
+  es: { setTitle: 'Ajustes', setOpacity: 'Opacidad', setSize: 'Tamaño', setStats: 'Stats', setNudges: 'Consejos', setAi: 'Consejo IA' },
+  pl: { setTitle: 'Ustawienia', setOpacity: 'Krycie', setSize: 'Rozmiar', setStats: 'Staty', setNudges: 'Wskazówki', setAi: 'Porada AI' },
+  pt: { setTitle: 'Configurações', setOpacity: 'Opacidade', setSize: 'Tamanho', setStats: 'Stats', setNudges: 'Dicas', setAi: 'Dica de IA' },
+  ru: { setTitle: 'Настройки', setOpacity: 'Прозрачность', setSize: 'Размер', setStats: 'Статистика', setNudges: 'Подсказки', setAi: 'AI-совет' },
+  tr: { setTitle: 'Ayarlar', setOpacity: 'Saydamlık', setSize: 'Boyut', setStats: 'İstatistik', setNudges: 'İpuçları', setAi: 'AI önerisi' },
+  ko: { setTitle: '설정', setOpacity: '불투명도', setSize: '크기', setStats: '스탯', setNudges: '알림', setAi: 'AI 조언' },
+  zh: { setTitle: '设置', setOpacity: '不透明度', setSize: '大小', setStats: '数据', setNudges: '提示', setAi: 'AI 建议' },
+  ja: { setTitle: '設定', setOpacity: '不透明度', setSize: 'サイズ', setStats: 'スタッツ', setNudges: 'ヒント', setAi: 'AIアドバイス' },
+  vi: { setTitle: 'Cài đặt', setOpacity: 'Độ mờ', setSize: 'Kích thước', setStats: 'Chỉ số', setNudges: 'Gợi ý', setAi: 'Mẹo AI' },
+};
+for (const l in SET_STR) Object.assign(LANGS[l], SET_STR[l]);
+
 // AI live-recommendation strings.
 const AI_STR = {
   en: { aiTitle: 'AI recommendation', aiWait: 'reading the game…' },
