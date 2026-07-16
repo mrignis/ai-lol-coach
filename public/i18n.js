@@ -303,6 +303,24 @@ const LANGS = {
   },
 };
 
+// Extra keys (nav, news, saved accounts) merged into every language below.
+const EXTRA = {
+  en: { navHome: 'Home', navBot: 'Live Bot', newsTitle: 'League news', patch: 'Patch', freeRotation: 'Free rotation', saveTip: 'Save this account', savedTitle: 'Saved', more: 'More' },
+  uk: { navHome: 'Головна', navBot: 'Бот у грі', newsTitle: 'Новини League', patch: 'Патч', freeRotation: 'Безкоштовна ротація', saveTip: 'Зберегти акаунт', savedTitle: 'Збережені', more: 'Більше' },
+  fr: { navHome: 'Accueil', navBot: 'Bot live', newsTitle: 'Actus League', patch: 'Patch', freeRotation: 'Rotation gratuite', saveTip: 'Enregistrer ce compte', savedTitle: 'Enregistrés', more: 'Plus' },
+  de: { navHome: 'Start', navBot: 'Live-Bot', newsTitle: 'League-News', patch: 'Patch', freeRotation: 'Gratis-Rotation', saveTip: 'Konto speichern', savedTitle: 'Gespeichert', more: 'Mehr' },
+  es: { navHome: 'Inicio', navBot: 'Bot en vivo', newsTitle: 'Noticias de League', patch: 'Parche', freeRotation: 'Rotación gratis', saveTip: 'Guardar esta cuenta', savedTitle: 'Guardados', more: 'Más' },
+  pl: { navHome: 'Główna', navBot: 'Bot na żywo', newsTitle: 'Wiadomości League', patch: 'Patch', freeRotation: 'Darmowa rotacja', saveTip: 'Zapisz konto', savedTitle: 'Zapisane', more: 'Więcej' },
+  pt: { navHome: 'Início', navBot: 'Bot ao vivo', newsTitle: 'Notícias de League', patch: 'Patch', freeRotation: 'Rotação grátis', saveTip: 'Salvar esta conta', savedTitle: 'Salvos', more: 'Mais' },
+  ru: { navHome: 'Главная', navBot: 'Бот в игре', newsTitle: 'Новости League', patch: 'Патч', freeRotation: 'Бесплатная ротация', saveTip: 'Сохранить аккаунт', savedTitle: 'Сохранённые', more: 'Больше' },
+  tr: { navHome: 'Ana Sayfa', navBot: 'Canlı Bot', newsTitle: 'League haberleri', patch: 'Yama', freeRotation: 'Ücretsiz rotasyon', saveTip: 'Bu hesabı kaydet', savedTitle: 'Kayıtlı', more: 'Daha' },
+  ko: { navHome: '홈', navBot: '라이브 봇', newsTitle: 'League 소식', patch: '패치', freeRotation: '무료 로테이션', saveTip: '이 계정 저장', savedTitle: '저장됨', more: '더보기' },
+  zh: { navHome: '主页', navBot: '实时助手', newsTitle: 'League 资讯', patch: '版本', freeRotation: '免费轮换', saveTip: '保存此账号', savedTitle: '已保存', more: '更多' },
+  ja: { navHome: 'ホーム', navBot: 'ライブボット', newsTitle: 'League ニュース', patch: 'パッチ', freeRotation: '無料ローテ', saveTip: 'このアカウントを保存', savedTitle: '保存済み', more: 'もっと見る' },
+  vi: { navHome: 'Trang chủ', navBot: 'Bot trực tiếp', newsTitle: 'Tin tức League', patch: 'Bản vá', freeRotation: 'Tướng miễn phí', saveTip: 'Lưu tài khoản này', savedTitle: 'Đã lưu', more: 'Thêm' },
+};
+for (const l in EXTRA) Object.assign(LANGS[l], EXTRA[l]);
+
 // Weakness metric labels (the backend sends English; we relabel on the client).
 const METRIC_LABELS = {
   en: { csPerMin: 'CS per min', visPerMin: 'Vision / min', kp: 'Kill participation', deaths: 'Deaths per game', goldPerMin: 'Gold / min', dmgPerMin: 'Damage / min' },
@@ -353,6 +371,9 @@ function applyStatic(root = document) {
   });
   root.querySelectorAll('[data-i18n-ph]').forEach(el => {
     el.placeholder = t(el.getAttribute('data-i18n-ph'));
+  });
+  root.querySelectorAll('[data-i18n-title]').forEach(el => {
+    el.title = t(el.getAttribute('data-i18n-title'));
   });
   document.documentElement.lang = _lang;
 }

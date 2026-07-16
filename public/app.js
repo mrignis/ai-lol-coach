@@ -121,6 +121,7 @@ $('form').addEventListener('submit', async e => {
   const riotId = $('riotId').value.trim();
   const region = $('region').value;
   if (!riotId.includes('#')) return showError(t('errFormat'));
+  localStorage.setItem('lolcoach_riotid', riotId); // remember last search
   startLoading();
   try {
     const res = await fetch('/api/analyze', {
@@ -142,12 +143,88 @@ $('gamesToggle').addEventListener('click', () => {
   $('gamesToggle').classList.toggle('open', !list.hidden);
 });
 
+// ── saved accounts ─────────────────────────────────────────────────────
+const ACCTS_KEY = 'lolcoach_accounts';
+const getAccounts = () => { try { return JSON.parse(localStorage.getItem(ACCTS_KEY)) || []; } catch { return []; } };
+const setAccounts = a => localStorage.setItem(ACCTS_KEY, JSON.stringify(a));
+
+function renderSaved() {
+  const accts = getAccounts();
+  const box = $('saved');
+  if (!accts.length) { box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+  box.innerHTML = `<span class="saved-label">${t('savedTitle')}:</span> ` + accts.map((a, i) =>
+    `<span class="acct"><button class="acct-load" data-i="${i}">${escapeHtml(a.riotId)} · ${a.region.toUpperCase()}</button><button class="acct-del" data-i="${i}" title="✕">✕</button></span>`
+  ).join('');
+}
+
+function saveCurrent() {
+  const riotId = $('riotId').value.trim();
+  const region = $('region').value;
+  if (!riotId.includes('#')) return showError(t('errFormat'));
+  const accts = getAccounts().filter(a => !(a.riotId.toLowerCase() === riotId.toLowerCase() && a.region === region));
+  accts.unshift({ riotId, region });
+  setAccounts(accts.slice(0, 8));
+  renderSaved();
+}
+
+$('save').addEventListener('click', saveCurrent);
+$('saved').addEventListener('click', e => {
+  const load = e.target.closest('.acct-load');
+  const del = e.target.closest('.acct-del');
+  if (load) {
+    const a = getAccounts()[+load.dataset.i];
+    if (a) {
+      $('riotId').value = a.riotId;
+      $('region').value = a.region;
+      localStorage.setItem('lolcoach_region', a.region);
+      $('form').requestSubmit();
+    }
+  } else if (del) {
+    const accts = getAccounts();
+    accts.splice(+del.dataset.i, 1);
+    setAccounts(accts);
+    renderSaved();
+  }
+});
+
+// ── League news (patch + free rotation) ────────────────────────────────
+let lastNews = null;
+async function loadNews() {
+  try {
+    const region = localStorage.getItem('lolcoach_region') || 'euw1';
+    lastNews = await (await fetch('/api/news?region=' + region)).json();
+    renderNews();
+  } catch { /* news is best-effort */ }
+}
+function renderNews() {
+  const n = lastNews;
+  if (!n || (!n.patch && !(n.rotation && n.rotation.length))) { $('news').hidden = true; return; }
+  let html = '';
+  if (n.patch) html += `<p class="news-line"><span class="muted">${t('patch')}:</span> <b>${n.patch}</b></p>`;
+  if (n.rotation && n.rotation.length) {
+    html += `<p class="news-line"><span class="muted">${t('freeRotation')}:</span> ` +
+      n.rotation.map(c => `<span class="champ">${escapeHtml(c)}</span>`).join(' ') + '</p>';
+  }
+  $('newsBody').innerHTML = html;
+  if (n.newsUrl) $('newsLink').href = n.newsUrl;
+  $('news').hidden = false;
+}
+
 // i18n: build the language dropdown, translate static text, and re-render the
-// current result (and re-fetch coaching in the new language) on switch.
+// current result, saved chips and news (labels) on switch.
 buildLangSelect('lang');
 applyStatic();
 document.addEventListener('langchange', () => {
   if (lastData) render(lastData);
+  renderSaved();
+  renderNews();
 });
 
+// Prefill the last-used Riot ID so returning users don't retype it.
+const savedId = localStorage.getItem('lolcoach_riotid');
+if (savedId) $('riotId').value = savedId;
+
+renderSaved();
 loadRegions();
+loadNews();

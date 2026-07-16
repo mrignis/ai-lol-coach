@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { config, PLATFORMS } from './config.js';
 import { analyzePlayer } from './analyze.js';
 import { fetchLiveData, buildLiveResponse } from './live.js';
+import { getNews } from './news.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -17,6 +18,17 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/regions', (req, res) => {
   res.json({ platforms: PLATFORMS });
+});
+
+// LoL news: current patch + this week's free champion rotation.
+app.get('/api/news', async (req, res) => {
+  const platform = PLATFORMS.some(p => p.id === req.query.region) ? req.query.region : 'na1';
+  try {
+    res.json(await getNews(platform));
+  } catch (e) {
+    console.error('[news]', e.message);
+    res.json({ patch: null, rotation: [] });
+  }
 });
 
 app.post('/api/analyze', async (req, res) => {

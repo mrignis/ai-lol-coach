@@ -52,6 +52,36 @@ body {
 .btn:hover { filter: brightness(1.07); }
 .btn:disabled { opacity: .5; cursor: default; }
 
+/* Main navigation */
+.mainnav { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+.navbtn {
+  text-decoration: none; color: var(--muted); background: var(--panel);
+  border: 1px solid var(--line); padding: 8px 18px; border-radius: 999px; font-size: 14px;
+}
+.navbtn:hover { color: var(--text); }
+.navbtn.active { color: var(--gold-soft); border-color: var(--gold); background: var(--panel-2); }
+
+/* Save star + saved accounts */
+.btn-star {
+  flex: 0 0 auto; background: var(--panel-2); border: 1px solid var(--line); color: var(--gold);
+  border-radius: 10px; padding: 12px 14px; font-size: 16px; cursor: pointer; line-height: 1;
+}
+.btn-star:hover { border-color: var(--gold); }
+.saved { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.saved-label { color: var(--muted); font-size: 13px; }
+.acct { display: inline-flex; align-items: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.acct-load { background: none; border: 0; color: var(--text); padding: 6px 4px 6px 12px; font-size: 13px; cursor: pointer; }
+.acct-load:hover { color: var(--gold-soft); }
+.acct-del { background: none; border: 0; color: var(--muted); padding: 6px 10px 6px 4px; cursor: pointer; font-size: 12px; }
+.acct-del:hover { color: var(--red); }
+
+/* News card */
+.news { margin-top: 16px; }
+.news-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.news-head h3 { margin: 0; font-size: 16px; color: var(--gold-soft); }
+.news-line { margin: 6px 0; font-size: 14px; line-height: 1.8; }
+.news .champ { display: inline-block; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; font-size: 12.5px; margin: 2px; }
+
 .error {
   margin: 14px 0 0; padding: 12px 14px; border-radius: 10px;
   background: rgba(229, 85, 78, .12); border: 1px solid rgba(229, 85, 78, .4);

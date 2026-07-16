@@ -12,14 +12,29 @@
       <div class="langbar"><select id="lang" class="field lang" aria-label="Language"></select></div>
       <h1>AI LoL Coach</h1>
       <p class="tag" data-i18n="tagline" data-i18n-html>Reads your last 20 ranked games and tells you the 3 things <em>you</em> should fix.</p>
-      <p class="nav"><a href="/live.html" data-i18n="liveLink">⚡ Live in-game companion (beta)</a></p>
     </header>
+
+    <nav class="mainnav">
+      <a href="/" class="navbtn active" data-i18n="navHome">Home</a>
+      <a href="/live.html" class="navbtn" data-i18n="navBot">Live Bot</a>
+    </nav>
 
     <form id="form" class="controls" autocomplete="off">
       <input id="riotId" class="field" type="text" placeholder="Name#TAG  (e.g. Faker#KR1)" data-i18n-ph="placeholder" required />
       <select id="region" class="field region"></select>
+      <button id="save" class="btn-star" type="button" data-i18n-title="saveTip" title="Save">★</button>
       <button id="go" class="btn" type="submit" data-i18n="analyze">Analyze</button>
     </form>
+
+    <div id="saved" class="saved" hidden></div>
+
+    <section id="news" class="card news" hidden>
+      <div class="news-head">
+        <h3 data-i18n="newsTitle">League news</h3>
+        <a id="newsLink" class="link" target="_blank" rel="noopener" data-i18n="more">More</a>
+      </div>
+      <div id="newsBody"></div>
+    </section>
 
     <p id="error" class="error" hidden></p>
 
