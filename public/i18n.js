@@ -321,6 +321,24 @@ const EXTRA = {
 };
 for (const l in EXTRA) Object.assign(LANGS[l], EXTRA[l]);
 
+// AI live-recommendation strings.
+const AI_STR = {
+  en: { aiTitle: 'AI recommendation', aiWait: 'reading the game…' },
+  uk: { aiTitle: 'AI-рекомендація', aiWait: 'читаю гру…' },
+  fr: { aiTitle: 'Recommandation IA', aiWait: 'analyse de la partie…' },
+  de: { aiTitle: 'KI-Empfehlung', aiWait: 'lese das Spiel…' },
+  es: { aiTitle: 'Recomendación IA', aiWait: 'leyendo la partida…' },
+  pl: { aiTitle: 'Rekomendacja AI', aiWait: 'czytam grę…' },
+  pt: { aiTitle: 'Recomendação da IA', aiWait: 'lendo a partida…' },
+  ru: { aiTitle: 'AI-рекомендация', aiWait: 'читаю игру…' },
+  tr: { aiTitle: 'AI önerisi', aiWait: 'oyun okunuyor…' },
+  ko: { aiTitle: 'AI 추천', aiWait: '게임 분석 중…' },
+  zh: { aiTitle: 'AI 建议', aiWait: '正在读取对局…' },
+  ja: { aiTitle: 'AI おすすめ', aiWait: '試合を分析中…' },
+  vi: { aiTitle: 'Gợi ý AI', aiWait: 'đang đọc trận đấu…' },
+};
+for (const l in AI_STR) Object.assign(LANGS[l], AI_STR[l]);
+
 // Weakness metric labels (the backend sends English; we relabel on the client).
 const METRIC_LABELS = {
   en: { csPerMin: 'CS per min', visPerMin: 'Vision / min', kp: 'Kill participation', deaths: 'Deaths per game', goldPerMin: 'Gold / min', dmgPerMin: 'Damage / min' },

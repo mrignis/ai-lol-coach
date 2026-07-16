@@ -8,6 +8,11 @@
 </head>
 <body>
   <main class="wrap">
+    <div class="ov-bar" id="ovBar" hidden>
+      <span class="ov-title" data-i18n="liveTitle">Live Companion</span>
+      <span class="ov-hint">Ctrl+Shift+X · Ctrl+Shift+H</span>
+      <button id="ovClose" class="ov-btn" title="Close">✕</button>
+    </div>
     <header class="head">
       <div class="langbar"><select id="lang" class="field lang" aria-label="Language"></select></div>
       <h1 data-i18n="liveTitle">Live Companion</h1>
@@ -42,6 +47,10 @@
       <div class="card">
         <h3 data-i18n="rightNow">Right now</h3>
         <div id="liveNudges" class="live-nudges"></div>
+      </div>
+      <div class="card ai-card">
+        <h3>🤖 <span data-i18n="aiTitle">AI recommendation</span></h3>
+        <div id="aiTip" class="ai-tip muted" data-i18n="aiWait">reading the game…</div>
       </div>
     </div>
 

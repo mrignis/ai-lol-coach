@@ -115,6 +115,41 @@ async function callAnthropic({ system, user }) {
   return data.content?.[0]?.text?.trim();
 }
 
+// Dispatch a raw prompt to the configured provider (throws on failure).
+async function callLLM(system, user) {
+  const p = config.llm.provider;
+  const prompt = { system, user };
+  if (p === 'groq' && config.llm.groqKey) return callGroq(prompt);
+  if (p === 'anthropic' && config.llm.anthropicKey) return callAnthropic(prompt);
+  return callOllama(prompt); // ollama default
+}
+
+// One short, live, actionable recommendation from the current game state.
+// Falls back to the top rule-based nudge if the LLM is unreachable.
+export async function liveTip({ me, gameTimeSec, role, nudges, lang }) {
+  const min = Math.max(gameTimeSec / 60, 0.5);
+  const langName = LANG_NAMES[lang] || 'English';
+  const system =
+    'You are a League of Legends coach watching a LIVE game. Give ONE concrete, specific ' +
+    'thing to do in the next 90 seconds — macro or safety, never mechanical spam. Max 25 words, ' +
+    'no preamble, speak directly ("you").' + (lang && lang !== 'en' ? ` Reply in ${langName}.` : '');
+  const user =
+    `You are ${me.champion} (${role}), ${Math.round(gameTimeSec / 60)} min in. ` +
+    `KDA ${me.kills}/${me.deaths}/${me.assists}, CS ${me.cs} (${(me.cs / min).toFixed(1)}/min), ` +
+    `vision ${me.wardScore}, gold ${me.gold}, level ${me.level}. ` +
+    `What is the single most useful thing to do right now?`;
+  try {
+    const text = await callLLM(system, user);
+    if (text) return { tip: text.trim(), source: config.llm.provider };
+  } catch (e) {
+    console.warn('[llm] liveTip failed:', e.message);
+  }
+  const fallback = nudges && nudges.length
+    ? nudges[0].text
+    : 'Play safe, ward key entrances, and only fight with a numbers or cooldown advantage.';
+  return { tip: fallback, source: 'template' };
+}
+
 // Returns { text, source }. Falls back to a template if the provider fails,
 // so a down Ollama or missing key never breaks the analysis.
 export async function coach(ctx) {

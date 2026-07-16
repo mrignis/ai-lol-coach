@@ -55,13 +55,30 @@ async function poll() {
   }
 }
 
+// AI recommendation — polled less often (LLM call is heavier than the widget).
+async function loadAiTip() {
+  try {
+    const d = await (await fetch(`/api/live-coach?bucket=${bucket}&lang=${getLang()}`)).json();
+    if (d.inGame && d.ready && d.tip) $('aiTip').textContent = d.tip;
+  } catch { /* best-effort */ }
+}
+
+// Overlay mode (?overlay=1): transparent draggable window launched by Electron.
+if (new URLSearchParams(location.search).get('overlay') === '1') {
+  document.body.classList.add('overlay');
+  $('ovBar').hidden = false;
+  $('ovClose').addEventListener('click', () => window.close());
+}
+
 // i18n: language dropdown + translate static text; re-render on switch.
 buildLangSelect('lang');
 applyStatic();
 document.addEventListener('langchange', () => {
-  if (lastLive) render(lastLive);
+  if (lastLive) { render(lastLive); loadAiTip(); }
   else poll();
 });
 
 poll();
 setInterval(poll, 5000);
+loadAiTip();
+setInterval(loadAiTip, 60000);

@@ -1,5 +1,6 @@
 import https from 'node:https';
 import { BENCHMARKS } from './benchmarks.js';
+import { liveTip } from './llm.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // League "Live Client Data API" — runs LOCALLY on the player's PC while a
@@ -110,4 +111,19 @@ export function buildLiveResponse(data, bucket = 'mid') {
     },
     nudges: buildNudges(me, role, gameTime, events, gold, bucket),
   };
+}
+
+// LLM-backed single live recommendation (polled less often than the widget).
+export async function liveCoachResponse(bucket = 'mid', lang = 'en') {
+  const data = await fetchLiveData();
+  const base = buildLiveResponse(data, bucket);
+  if (!base.ready) return { inGame: base.inGame !== false, ready: false };
+  const { tip, source } = await liveTip({
+    me: base.me,
+    gameTimeSec: base.gameTimeSec,
+    role: base.me.role,
+    nudges: base.nudges,
+    lang,
+  });
+  return { inGame: true, ready: true, tip, source };
 }

@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { config, PLATFORMS } from './config.js';
 import { analyzePlayer } from './analyze.js';
-import { fetchLiveData, buildLiveResponse } from './live.js';
+import { fetchLiveData, buildLiveResponse, liveCoachResponse } from './live.js';
 import { getNews } from './news.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -65,6 +65,18 @@ app.get('/api/live', async (req, res) => {
     if (e.code === 'NOGAME') return res.json({ inGame: false });
     console.error('[live]', e.message);
     res.json({ inGame: false, error: 'live_read_failed' });
+  }
+});
+
+// AI live recommendation — LLM reads the current game state (polled ~60s).
+app.get('/api/live-coach', async (req, res) => {
+  const bucket = ['low', 'mid', 'high'].includes(req.query.bucket) ? req.query.bucket : 'mid';
+  try {
+    res.json(await liveCoachResponse(bucket, req.query.lang || 'en'));
+  } catch (e) {
+    if (e.code === 'NOGAME') return res.json({ inGame: false });
+    console.error('[live-coach]', e.message);
+    res.json({ inGame: false });
   }
 });
 
