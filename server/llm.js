@@ -26,7 +26,7 @@ function buildPrompt({ rank, role, bucket, roleMixed, weaknesses, lang }) {
     'own recent games — never give generic tier-list advice. No filler. Speak to them directly ("you"). ' +
     'For each weakness: name the problem plainly, cite their own number vs the benchmark, and give ONE ' +
     'specific thing to do next game. Keep the whole reply under 250 words. Output 3 short numbered points.' +
-    (lang && lang !== 'en' ? ` Write your entire response in ${langName}.` : '');
+    (lang && lang !== 'en' ? ` Write your entire response in natural, fluent, grammatically correct ${langName} — no translation artifacts or awkward calques.` : '');
 
   const rankStr = rank ? `${rank.tier} ${rank.rank} (${bucket}-elo benchmarks)` : `unranked (${bucket}-elo benchmarks)`;
   const mixNote = roleMixed
@@ -132,7 +132,7 @@ export async function liveTip({ me, gameTimeSec, role, nudges, lang }) {
   const system =
     'You are a League of Legends coach watching a LIVE game. Give ONE concrete, specific ' +
     'thing to do in the next 90 seconds — macro or safety, never mechanical spam. Max 25 words, ' +
-    'no preamble, speak directly ("you").' + (lang && lang !== 'en' ? ` Reply in ${langName}.` : '');
+    'no preamble, speak directly ("you").' + (lang && lang !== 'en' ? ` Reply in natural, grammatically correct ${langName}.` : '');
   const user =
     `You are ${me.champion} (${role}), ${Math.round(gameTimeSec / 60)} min in. ` +
     `KDA ${me.kills}/${me.deaths}/${me.assists}, CS ${me.cs} (${(me.cs / min).toFixed(1)}/min), ` +
