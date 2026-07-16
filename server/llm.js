@@ -12,12 +12,21 @@ function gapLine(g) {
   return `- ${g.label}: you average ${fmt(g.key, g.player)} vs a target of ${fmt(g.key, g.target)} (${side})`;
 }
 
-function buildPrompt({ rank, role, bucket, roleMixed, weaknesses }) {
+// lang code → language the LLM should reply in.
+const LANG_NAMES = {
+  en: 'English', uk: 'Ukrainian', fr: 'French', de: 'German', es: 'Spanish',
+  pl: 'Polish', pt: 'Brazilian Portuguese', ru: 'Russian', tr: 'Turkish',
+  ko: 'Korean', zh: 'Simplified Chinese', ja: 'Japanese', vi: 'Vietnamese',
+};
+
+function buildPrompt({ rank, role, bucket, roleMixed, weaknesses, lang }) {
+  const langName = LANG_NAMES[lang] || 'English';
   const system =
     'You are a friendly, direct League of Legends coach. You know THIS player from their ' +
     'own recent games — never give generic tier-list advice. No filler. Speak to them directly ("you"). ' +
     'For each weakness: name the problem plainly, cite their own number vs the benchmark, and give ONE ' +
-    'specific thing to do next game. Keep the whole reply under 250 words. Output 3 short numbered points.';
+    'specific thing to do next game. Keep the whole reply under 250 words. Output 3 short numbered points.' +
+    (lang && lang !== 'en' ? ` Write your entire response in ${langName}.` : '');
 
   const rankStr = rank ? `${rank.tier} ${rank.rank} (${bucket}-elo benchmarks)` : `unranked (${bucket}-elo benchmarks)`;
   const mixNote = roleMixed

@@ -1,16 +1,7 @@
 const $ = id => document.getElementById(id);
 
-const ROLE_LABEL = { TOP: 'Top', JUNGLE: 'Jungle', MIDDLE: 'Mid', BOTTOM: 'ADC', UTILITY: 'Support', UNKNOWN: '—' };
-
-// Staged loading messages so the wait feels alive (spec §7).
-const LOADING_STEPS = [
-  'finding your account…',
-  'reading your last 20 games…',
-  'crunching your numbers…',
-  'comparing you to your rank…',
-  'writing your coaching…',
-];
 let loadTimer = null;
+let lastData = null; // kept so switching language re-renders the current result
 
 async function loadRegions() {
   // Remember the player's last region so they don't keep re-picking it.
@@ -32,11 +23,12 @@ function startLoading() {
   $('results').hidden = true;
   $('loading').hidden = false;
   $('go').disabled = true;
+  const steps = t('loading');
   let i = 0;
-  $('loadingText').textContent = LOADING_STEPS[0];
+  $('loadingText').textContent = steps[0];
   loadTimer = setInterval(() => {
-    i = Math.min(i + 1, LOADING_STEPS.length - 1);
-    $('loadingText').textContent = LOADING_STEPS[i];
+    i = Math.min(i + 1, steps.length - 1);
+    $('loadingText').textContent = steps[i];
   }, 1600);
 }
 
@@ -62,12 +54,13 @@ function fmtMetric(key, v) {
 }
 
 function render(data) {
+  lastData = data;
   const s = data.summary;
 
   // Summary card
   $('playerName').textContent = `${s.gameName} #${s.tagLine}`;
-  const rank = s.rank ? `${cap(s.rank.tier)} ${s.rank.rank} · ${s.rank.lp} LP` : 'Unranked';
-  $('playerRank').textContent = `${rank} · mostly ${ROLE_LABEL[s.mainRole] || s.mainRole}`;
+  const rank = s.rank ? `${cap(s.rank.tier)} ${s.rank.rank} · ${s.rank.lp} LP` : t('unranked');
+  $('playerRank').textContent = `${rank} · ${t('mostly')} ${tRole(s.mainRole)}`;
   $('wrValue').textContent = pct(s.winRate);
   $('wrValue').style.color = s.winRate >= 0.5 ? 'var(--green)' : 'var(--red)';
   $('wrGames').textContent = s.gamesAnalyzed;
@@ -76,40 +69,41 @@ function render(data) {
   ).join('');
   if (s.roleMixed) {
     $('roleNote').hidden = false;
-    $('roleNote').textContent = '⚠ You play several roles, so numbers are blended — read the advice against your main role.';
+    $('roleNote').textContent = t('roleMixed');
   } else {
     $('roleNote').hidden = true;
   }
   if (s.queueScope === 'any') {
     $('roleNote').hidden = false;
-    $('roleNote').textContent = 'ℹ No ranked games found — analyzing your most recent games of any queue.';
+    $('roleNote').textContent = t('noRanked');
   }
 
   // Weakness chips
   $('chips').innerHTML = data.weaknesses.gaps.map(g => {
     const worse = g.gap > 0;
-    return `<div class="chip"><span class="k">${g.label}:</span> ` +
+    return `<div class="chip"><span class="k">${tMetric(g.key)}:</span> ` +
       `<span class="v" style="color:${worse ? 'var(--red)' : 'var(--green)'}">${fmtMetric(g.key, g.player)}</span> ` +
-      `<span class="t">→ target ${fmtMetric(g.key, g.target)}</span></div>`;
+      `<span class="t">→ ${t('target')} ${fmtMetric(g.key, g.target)}</span></div>`;
   }).join('');
 
   // Coaching text — highlight numbers lightly
   $('coachText').innerHTML = escapeHtml(data.weaknesses.coachText)
     .replace(/(\d+(?:\.\d+)?%?)/g, '<span class="num">$1</span>');
   $('coachSource').textContent = data.weaknesses.coachSource === 'template'
-    ? 'coach text generated locally (LLM offline — start Ollama for richer advice)'
-    : `coach text by ${data.weaknesses.coachSource}`;
+    ? t('coachLocal')
+    : `${t('coachBy')} ${data.weaknesses.coachSource}`;
 
   // Game list
   $('gamesCount').textContent = data.games.length;
   $('gamesList').innerHTML = data.games.map(g => {
     const cls = g.win ? 'win' : 'loss';
     const kda = `${g.kills}/${g.deaths}/${g.assists}`;
+    const result = g.win ? t('win') : t('loss');
     return `<div class="game-row ${cls}">
       <div class="bar"></div>
-      <div class="g-main"><b>${g.champion}</b><span>${ROLE_LABEL[g.role] || g.role} · ${g.win ? 'Win' : 'Loss'}${g.remake ? ' · remake' : ''}</span></div>
+      <div class="g-main"><b>${g.champion}</b><span>${tRole(g.role)} · ${result}${g.remake ? ' · ' + t('remake') : ''}</span></div>
       <div class="g-kda">${kda}</div>
-      <div class="g-cs">${g.csPerMin.toFixed(1)} cs/m</div>
+      <div class="g-cs">${g.csPerMin.toFixed(1)} ${t('csm')}</div>
     </div>`;
   }).join('');
 
@@ -126,19 +120,19 @@ $('form').addEventListener('submit', async e => {
   e.preventDefault();
   const riotId = $('riotId').value.trim();
   const region = $('region').value;
-  if (!riotId.includes('#')) return showError('Enter your Riot ID as Name#TAG (e.g. Faker#KR1).');
+  if (!riotId.includes('#')) return showError(t('errFormat'));
   startLoading();
   try {
     const res = await fetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ riotId, region }),
+      body: JSON.stringify({ riotId, region, lang: getLang() }),
     });
     const data = await res.json();
-    if (!res.ok) return showError(data.error || 'Analysis failed.');
+    if (!res.ok) return showError(data.error || t('errFail'));
     render(data);
   } catch {
-    showError('Could not reach the server. Is it running?');
+    showError(t('errServer'));
   }
 });
 
@@ -146,6 +140,14 @@ $('gamesToggle').addEventListener('click', () => {
   const list = $('gamesList');
   list.hidden = !list.hidden;
   $('gamesToggle').classList.toggle('open', !list.hidden);
+});
+
+// i18n: build the language dropdown, translate static text, and re-render the
+// current result (and re-fetch coaching in the new language) on switch.
+buildLangSelect('lang');
+applyStatic();
+document.addEventListener('langchange', () => {
+  if (lastData) render(lastData);
 });
 
 loadRegions();

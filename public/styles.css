@@ -27,7 +27,10 @@ body {
 
 .wrap { max-width: 720px; margin: 0 auto; padding: 28px 16px 60px; }
 
-.head { text-align: center; margin-bottom: 22px; }
+.head { text-align: center; margin-bottom: 22px; position: relative; }
+.langbar { position: absolute; top: -4px; right: 0; }
+.lang { padding: 6px 8px; font-size: 12.5px; cursor: pointer; max-width: 140px; }
+@media (max-width: 480px) { .langbar { position: static; margin-bottom: 10px; text-align: right; } }
 .head h1 { margin: 0; font-size: 30px; letter-spacing: .3px; color: var(--gold-soft); }
 .head h1::before { content: "⚔ "; color: var(--gold); }
 .tag { color: var(--muted); margin: 8px 0 0; font-size: 14px; }

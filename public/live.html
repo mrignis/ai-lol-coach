@@ -9,21 +9,22 @@
 <body>
   <main class="wrap">
     <header class="head">
-      <h1>Live Companion</h1>
-      <p class="tag">In-game nudges from the official Live Client Data API · <em>informational only</em></p>
+      <div class="langbar"><select id="lang" class="field lang" aria-label="Language"></select></div>
+      <h1 data-i18n="liveTitle">Live Companion</h1>
+      <p class="tag" data-i18n="liveTagline" data-i18n-html>In-game nudges from the official Live Client Data API · <em>informational only</em></p>
     </header>
 
     <div class="live-bar">
-      <label class="muted" for="bucket">Your rank tier:</label>
+      <label class="muted" for="bucket" data-i18n="rankTier">Your rank tier:</label>
       <select id="bucket" class="field">
-        <option value="low">Iron–Silver</option>
-        <option value="mid" selected>Gold–Plat</option>
-        <option value="high">Emerald+</option>
+        <option value="low" data-i18n="tierLow">Iron–Silver</option>
+        <option value="mid" selected data-i18n="tierMid">Gold–Plat</option>
+        <option value="high" data-i18n="tierHigh">Emerald+</option>
       </select>
       <span id="dot" class="dot off" title="connection"></span>
     </div>
 
-    <div id="status" class="card status">Waiting for a game… launch League and load into a match. This page checks every few seconds.</div>
+    <div id="status" class="card status" data-i18n="waiting">Waiting for a game… launch League and load into a match.</div>
 
     <div id="widget" hidden>
       <div class="card live-me">
@@ -34,16 +35,17 @@
         <div id="liveStats" class="live-stats"></div>
       </div>
       <div class="card">
-        <h3>Right now</h3>
+        <h3 data-i18n="rightNow">Right now</h3>
         <div id="liveNudges" class="live-nudges"></div>
       </div>
     </div>
 
     <footer class="foot muted">
-      <a href="/" class="link">← post-game analysis</a> ·
-      ToS-safe: read-only, no automation. Show this on a 2nd monitor or in windowed mode.
+      <a href="/" class="link" data-i18n="backLink">← post-game analysis</a> ·
+      <span data-i18n="liveFooter">ToS-safe: read-only, no automation. Show this on a 2nd monitor or in windowed mode.</span>
     </footer>
   </main>
+  <script src="i18n.js"></script>
   <script src="live.js"></script>
 </body>
 </html>

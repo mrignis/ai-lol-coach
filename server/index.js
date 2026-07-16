@@ -20,7 +20,7 @@ app.get('/api/regions', (req, res) => {
 });
 
 app.post('/api/analyze', async (req, res) => {
-  const { riotId, region } = req.body || {};
+  const { riotId, region, lang } = req.body || {};
   if (!riotId || !region) {
     return res.status(400).json({ error: 'riotId and region are required' });
   }
@@ -28,7 +28,7 @@ app.post('/api/analyze', async (req, res) => {
     return res.status(500).json({ error: 'Server has no RIOT_API_KEY set. Add it to .env and restart.' });
   }
   try {
-    const result = await analyzePlayer(riotId, region);
+    const result = await analyzePlayer(riotId, region, { lang });
     res.json(result);
   } catch (e) {
     const code = e.code && Number.isInteger(e.code) ? e.code : 500;

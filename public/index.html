@@ -9,15 +9,16 @@
 <body>
   <main class="wrap">
     <header class="head">
+      <div class="langbar"><select id="lang" class="field lang" aria-label="Language"></select></div>
       <h1>AI LoL Coach</h1>
-      <p class="tag">Reads your last 20 ranked games and tells you the 3 things <em>you</em> should fix.</p>
-      <p class="nav"><a href="/live.html">⚡ Live in-game companion (beta)</a></p>
+      <p class="tag" data-i18n="tagline" data-i18n-html>Reads your last 20 ranked games and tells you the 3 things <em>you</em> should fix.</p>
+      <p class="nav"><a href="/live.html" data-i18n="liveLink">⚡ Live in-game companion (beta)</a></p>
     </header>
 
     <form id="form" class="controls" autocomplete="off">
-      <input id="riotId" class="field" type="text" placeholder="Name#TAG  (e.g. Faker#KR1)" required />
+      <input id="riotId" class="field" type="text" placeholder="Name#TAG  (e.g. Faker#KR1)" data-i18n-ph="placeholder" required />
       <select id="region" class="field region"></select>
-      <button id="go" class="btn" type="submit">Analyze</button>
+      <button id="go" class="btn" type="submit" data-i18n="analyze">Analyze</button>
     </form>
 
     <p id="error" class="error" hidden></p>
@@ -37,7 +38,7 @@
           </div>
           <div class="wr">
             <span id="wrValue" class="wr-num"></span>
-            <span class="wr-label">win rate · last <span id="wrGames"></span></span>
+            <span class="wr-label"><span data-i18n="wrLabel">win rate · last</span> <span id="wrGames"></span></span>
           </div>
         </div>
         <div id="mainChamps" class="champs"></div>
@@ -46,7 +47,7 @@
 
       <!-- The core: 3 things to fix -->
       <div class="card fixes">
-        <h3>Your 3 things to fix</h3>
+        <h3 data-i18n="fixesTitle">Your 3 things to fix</h3>
         <div id="chips" class="chips"></div>
         <div id="coachText" class="coach"></div>
         <p id="coachSource" class="source muted"></p>
@@ -55,14 +56,15 @@
       <!-- Game list -->
       <div class="card games">
         <button id="gamesToggle" class="games-toggle" type="button">
-          Last <span id="gamesCount"></span> games <span class="chev">▾</span>
+          <span><span data-i18n="lastPre">Last</span> <span id="gamesCount"></span> <span data-i18n="lastPost">games</span></span> <span class="chev">▾</span>
         </button>
         <div id="gamesList" class="games-list" hidden></div>
       </div>
     </section>
 
-    <footer class="foot muted">Official Riot API · post-game coaching only · not affiliated with Riot Games</footer>
+    <footer class="foot muted" data-i18n="footer">Official Riot API · post-game coaching only · not affiliated with Riot Games</footer>
   </main>
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

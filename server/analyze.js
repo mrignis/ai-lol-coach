@@ -14,7 +14,7 @@ export function parseRiotId(raw) {
 }
 
 // Full pipeline: Riot ID + platform → summary, weaknesses + coaching, game list.
-export async function analyzePlayer(riotId, platform, { onProgress } = {}) {
+export async function analyzePlayer(riotId, platform, { onProgress, lang } = {}) {
   const { gameName, tagLine } = parseRiotId(riotId);
 
   const account = await getAccount(gameName, tagLine, platform);
@@ -52,7 +52,7 @@ export async function analyzePlayer(riotId, platform, { onProgress } = {}) {
   }
   const mainChamps = Object.values(champCounts).sort((a, b) => b.games - a.games).slice(0, 3);
 
-  const coaching = await coach({ rank, role, bucket, roleMixed, weaknesses });
+  const coaching = await coach({ rank, role, bucket, roleMixed, weaknesses, lang });
 
   return {
     summary: {

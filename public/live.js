@@ -1,5 +1,4 @@
 const $ = id => document.getElementById(id);
-const ROLE_LABEL = { TOP: 'Top', JUNGLE: 'Jungle', MIDDLE: 'Mid', BOTTOM: 'ADC', UTILITY: 'Support' };
 
 let bucket = localStorage.getItem('lolcoach_bucket') || 'mid';
 $('bucket').value = bucket;
@@ -8,6 +7,8 @@ $('bucket').addEventListener('change', () => {
   localStorage.setItem('lolcoach_bucket', bucket);
   poll();
 });
+
+let lastLive = null; // last in-game payload, so a language switch re-renders it
 
 const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
@@ -18,20 +19,21 @@ function showWaiting(text) {
 }
 
 function render(d) {
+  lastLive = d;
   $('status').hidden = true;
   $('widget').hidden = false;
   const m = d.me;
-  $('liveChamp').textContent = `${m.champion} · ${ROLE_LABEL[m.role] || m.role} · Lv ${m.level}`;
+  $('liveChamp').textContent = `${m.champion} · ${tRole(m.role)} · Lv ${m.level}`;
   $('liveTime').textContent = mmss(d.gameTimeSec);
   $('liveStats').innerHTML = [
-    ['KDA', `${m.kills}/${m.deaths}/${m.assists}`],
-    ['CS', `${m.cs} (${m.csPerMin.toFixed(1)}/m)`],
-    ['Vision', m.wardScore.toFixed(0)],
-    ['Gold', m.gold],
+    [t('statKDA'), `${m.kills}/${m.deaths}/${m.assists}`],
+    [t('statCS'), `${m.cs} (${m.csPerMin.toFixed(1)}/m)`],
+    [t('statVision'), m.wardScore.toFixed(0)],
+    [t('statGold'), m.gold],
   ].map(([k, v]) => `<div class="live-stat"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
 
   if (!d.nudges.length) {
-    $('liveNudges').innerHTML = `<div class="nudge info">You're on track — keep doing what you're doing. 👍</div>`;
+    $('liveNudges').innerHTML = `<div class="nudge info">${t('onTrack')}</div>`;
   } else {
     $('liveNudges').innerHTML = d.nudges
       .map(n => `<div class="nudge ${n.level}">${n.text}</div>`)
@@ -41,16 +43,25 @@ function render(d) {
 
 async function poll() {
   try {
-    const d = await (await fetch(`/api/live?bucket=${bucket}`)).json();
+    const d = await (await fetch(`/api/live?bucket=${bucket}&lang=${getLang()}`)).json();
     $('dot').className = 'dot on';
-    if (!d.inGame) return showWaiting('Waiting for a game… launch League and load into a match.');
-    if (!d.ready) return showWaiting('Game detected — loading player data…');
+    if (!d.inGame) { lastLive = null; return showWaiting(t('waiting')); }
+    if (!d.ready) { lastLive = null; return showWaiting(t('detected')); }
     render(d);
   } catch {
     $('dot').className = 'dot off';
-    showWaiting('Cannot reach the coach server. Is it running?');
+    lastLive = null;
+    showWaiting(t('noServer'));
   }
 }
+
+// i18n: language dropdown + translate static text; re-render on switch.
+buildLangSelect('lang');
+applyStatic();
+document.addEventListener('langchange', () => {
+  if (lastLive) render(lastLive);
+  else poll();
+});
 
 poll();
 setInterval(poll, 5000);
