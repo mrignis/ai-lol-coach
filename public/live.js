@@ -61,8 +61,11 @@ async function poll() {
 }
 
 // AI recommendation — polled less often (LLM call is heavier than the widget).
+// Skipped entirely when the AI section is switched off, so we don't burn LLM
+// calls (and cloud quota) on a card nobody is looking at.
 let lastAi = null;
 async function loadAiTip() {
+  if (!ovOpts.ai) return;
   try {
     const d = await (await fetch(`/api/live-coach?bucket=${bucket}&lang=${getLang()}`)).json();
     if (!d.inGame || !d.ready) { lastAi = null; return; }
@@ -118,6 +121,8 @@ if (new URLSearchParams(location.search).get('overlay') === '1') {
   bind('optStats', 'checked', 'stats', 'change');
   bind('optNudges', 'checked', 'nudges', 'change');
   bind('optAi', 'checked', 'ai', 'change');
+  // Switching AI back on should fill the card now, not at the next 60s tick.
+  $('optAi').addEventListener('change', () => { if (ovOpts.ai) loadAiTip(); });
   applyOpts();
 }
 
