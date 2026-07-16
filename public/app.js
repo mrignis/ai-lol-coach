@@ -86,8 +86,11 @@ function render(data) {
       `<span class="t">→ ${t('target')} ${fmtMetric(g.key, g.target)}</span></div>`;
   }).join('');
 
-  // Coaching text — highlight numbers lightly
-  $('coachText').innerHTML = escapeHtml(data.weaknesses.coachText)
+  // Coaching text — localize the offline template; LLM output is already localized.
+  const coachText = data.weaknesses.coachSource === 'template'
+    ? templateCoach(data.weaknesses.gaps)
+    : data.weaknesses.coachText;
+  $('coachText').innerHTML = escapeHtml(coachText)
     .replace(/(\d+(?:\.\d+)?%?)/g, '<span class="num">$1</span>');
   $('coachSource').textContent = data.weaknesses.coachSource === 'template'
     ? t('coachLocal')
@@ -203,8 +206,13 @@ function renderNews() {
   let html = '';
   if (n.patch) html += `<p class="news-line"><span class="muted">${t('patch')}:</span> <b>${n.patch}</b></p>`;
   if (n.rotation && n.rotation.length) {
-    html += `<p class="news-line"><span class="muted">${t('freeRotation')}:</span> ` +
-      n.rotation.map(c => `<span class="champ">${escapeHtml(c)}</span>`).join(' ') + '</p>';
+    html += `<p class="news-line muted">${t('freeRotation')}:</p><div class="rotation">` +
+      n.rotation.map(c => {
+        const name = typeof c === 'string' ? c : c.name;
+        const id = typeof c === 'string' ? null : c.id;
+        const img = id ? `<img loading="lazy" src="https://ddragon.leagueoflegends.com/cdn/${n.patch}/img/champion/${id}.png" alt="${escapeHtml(name)}">` : '';
+        return `<div class="rot-champ" title="${escapeHtml(name)}">${img}<span>${escapeHtml(name)}</span></div>`;
+      }).join('') + '</div>';
   }
   $('newsBody').innerHTML = html;
   if (n.newsUrl) $('newsLink').href = n.newsUrl;

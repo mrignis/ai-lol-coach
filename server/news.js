@@ -12,10 +12,11 @@ async function currentPatch() {
   return versions[0];
 }
 
-async function championNamesByKey(patch) {
+async function championByKey(patch) {
   const data = await (await fetch(`https://ddragon.leagueoflegends.com/cdn/${patch}/data/en_US/champion.json`)).json();
   const byKey = {};
-  for (const id in data.data) byKey[data.data[id].key] = data.data[id].name;
+  // id is the image filename (e.g. "MonkeyKing"); name is the display name.
+  for (const id in data.data) byKey[data.data[id].key] = { id, name: data.data[id].name };
   return byKey;
 }
 
@@ -36,8 +37,8 @@ export async function getNews(platform) {
       // Riot returns `sr` (Summoner's Rift) now; older payloads used `freeChampionIds`.
       const ids = rot.sr || rot.freeChampionIds || [];
       if (Array.isArray(ids) && ids.length) {
-        const names = await championNamesByKey(patch);
-        rotation = ids.map(id => names[String(id)]).filter(Boolean).sort();
+        const champs = await championByKey(patch);
+        rotation = ids.map(id => champs[String(id)]).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
       }
     } catch { /* rotation is optional — patch still shows */ }
   }

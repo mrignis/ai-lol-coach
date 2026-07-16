@@ -356,6 +356,115 @@ const METRIC_LABELS = {
   vi: { csPerMin: 'CS mỗi phút', visPerMin: 'Tầm nhìn mỗi phút', kp: 'Tham gia hạ gục', deaths: 'Số lần chết mỗi trận', goldPerMin: 'Vàng mỗi phút', dmgPerMin: 'Sát thương mỗi phút' },
 };
 
+// Offline coach tips per metric — used to build the "3 things to fix" text in
+// the chosen language when the LLM is unreachable (source === 'template').
+const TIPS = {
+  en: {
+    csPerMin: 'Set a CS target and last-hit through the first back — aim not to miss minions while trading.',
+    visPerMin: 'Use both trinket charges whenever they are up and clear one enemy ward per recall.',
+    kp: 'Group with your team for objectives — leave lane on a slow-push and join fights before they start.',
+    deaths: 'Before each play ask "what kills me here?" and respect enemy cooldowns; ward before you push.',
+    goldPerMin: 'Cut downtime: recall with purpose, then catch the wave — idle time is lost gold.',
+    dmgPerMin: 'Reposition to hit the front line safely each fight instead of chasing kills you cannot reach.',
+  },
+  uk: {
+    csPerMin: 'Постав ціль по КС і добивай міньйонів до першого повернення — не втрачай кріпів під час розмінів.',
+    visPerMin: 'Використовуй обидва заряди тотема, щойно готові, і знищуй один ворожий вард за повернення.',
+    kp: 'Збирайся з командою на об’єкти — виходь з лінії на повільному пуші й приєднуйся до бійок до їх початку.',
+    deaths: 'Перед кожною дією спитай «що мене тут уб’є?» і поважай кулдауни ворога; вардь перед пушем.',
+    goldPerMin: 'Скороти простій: повертайся з метою, потім забери хвилю — час без діла = втрачене золото.',
+    dmgPerMin: 'Перепозиціонуйся, щоб безпечно бити передню лінію в бійці, а не гнатися за недосяжними вбивствами.',
+  },
+  fr: {
+    csPerMin: 'Fixe un objectif de CS et last-hit jusqu’au premier retour — ne rate pas de sbires en échangeant.',
+    visPerMin: 'Utilise les deux charges de balise dès qu’elles sont prêtes et retire une ward ennemie par retour.',
+    kp: 'Regroupe-toi pour les objectifs — quitte ta voie sur un slow-push et rejoins les combats avant qu’ils commencent.',
+    deaths: 'Avant chaque action, demande « qu’est-ce qui me tue ici ? » et respecte les cooldowns ; ward avant de push.',
+    goldPerMin: 'Réduis les temps morts : recall utile, puis récupère la vague — le temps perdu, c’est de l’or perdu.',
+    dmgPerMin: 'Repositionne-toi pour toucher la ligne de front en sécurité au lieu de courir après des kills hors de portée.',
+  },
+  de: {
+    csPerMin: 'Setz dir ein CS-Ziel und lasthitte bis zum ersten Backen — verpasse keine Vasallen beim Trade.',
+    visPerMin: 'Nutze beide Trinket-Ladungen, sobald bereit, und räume pro Rückkehr eine gegnerische Ward.',
+    kp: 'Gruppiere dich für Ziele — verlasse die Lane bei einem Slow-Push und geh in Kämpfe, bevor sie starten.',
+    deaths: 'Frag vor jeder Aktion „Was tötet mich hier?“ und respektiere Cooldowns; warde vor dem Pushen.',
+    goldPerMin: 'Reduziere Leerlauf: gezielt recallen, dann Welle mitnehmen — Leerlauf ist verlorenes Gold.',
+    dmgPerMin: 'Positioniere dich neu, um sicher die Frontlinie zu treffen, statt unerreichbaren Kills nachzujagen.',
+  },
+  es: {
+    csPerMin: 'Ponte un objetivo de CS y last-hit hasta el primer recall — no pierdas súbditos al intercambiar.',
+    visPerMin: 'Usa ambas cargas del centinela en cuanto estén listas y limpia una ward enemiga por recall.',
+    kp: 'Agrúpate para los objetivos — sal de línea en slow-push y únete a las peleas antes de que empiecen.',
+    deaths: 'Antes de cada jugada pregunta "¿qué me mata aquí?" y respeta los cooldowns; pon ward antes de empujar.',
+    goldPerMin: 'Reduce el tiempo muerto: recall con propósito y recoge la oleada — el tiempo perdido es oro perdido.',
+    dmgPerMin: 'Reposiciónate para golpear la primera línea con seguridad en vez de perseguir kills fuera de alcance.',
+  },
+  pl: {
+    csPerMin: 'Ustal cel CS i dobijaj miniony do pierwszego powrotu — nie trać stworów podczas wymian.',
+    visPerMin: 'Używaj obu ładunków totemu, gdy są gotowe, i usuwaj jeden wrogi ward na powrót.',
+    kp: 'Grupuj się przy celach — schodź z linii przy slow-pushu i dołączaj do walk, zanim się zaczną.',
+    deaths: 'Przed każdą akcją zapytaj „co mnie tu zabije?” i szanuj cooldowny; stawiaj ward przed pushem.',
+    goldPerMin: 'Ogranicz przestoje: wracaj z celem, potem złap falę — czas bezczynności to stracone złoto.',
+    dmgPerMin: 'Przepozycjonuj się, by bezpiecznie trafiać front, zamiast gonić za nieosiągalnymi zabójstwami.',
+  },
+  pt: {
+    csPerMin: 'Defina uma meta de CS e faça last-hit até o primeiro recall — não perca minions ao trocar.',
+    visPerMin: 'Use as duas cargas do sentinela assim que prontas e limpe uma ward inimiga por recall.',
+    kp: 'Agrupe para os objetivos — saia da rota num slow-push e entre nas lutas antes de começarem.',
+    deaths: 'Antes de cada jogada pergunte "o que me mata aqui?" e respeite os cooldowns; warde antes de empurrar.',
+    goldPerMin: 'Corte o tempo ocioso: recall com propósito e pegue a onda — tempo parado é ouro perdido.',
+    dmgPerMin: 'Reposicione-se para acertar a linha de frente com segurança em vez de caçar abates fora de alcance.',
+  },
+  ru: {
+    csPerMin: 'Поставь цель по КС и добивай миньонов до первого возврата — не теряй крипов при разменах.',
+    visPerMin: 'Используй оба заряда тотема, как только готовы, и снимай один вражеский вард за возврат.',
+    kp: 'Собирайся с командой на объекты — уходи с линии на медленном пуше и вступай в драки до их начала.',
+    deaths: 'Перед каждым действием спроси «что меня здесь убьёт?» и уважай кулдауны; вардь перед пушем.',
+    goldPerMin: 'Сократи простой: возвращайся с целью, потом забери волну — время без дела = потерянное золото.',
+    dmgPerMin: 'Перепозиционируйся, чтобы безопасно бить переднюю линию, а не гнаться за недосягаемыми убийствами.',
+  },
+  tr: {
+    csPerMin: 'Bir CS hedefi koy ve ilk dönüşe kadar last-hit yap — takas ederken minyon kaçırma.',
+    visPerMin: 'Totem şarjlarının ikisini de hazır olunca kullan ve her dönüşte bir düşman wardı temizle.',
+    kp: 'Hedefler için toplan — slow-push’ta koridordan çık ve dövüşlere başlamadan katıl.',
+    deaths: 'Her hamleden önce "beni burada ne öldürür?" diye sor ve cooldownlara saygı duy; itmeden önce ward.',
+    goldPerMin: 'Boş zamanı azalt: amaçla dönüş yap, sonra dalgayı al — boşta geçen zaman kayıp altındır.',
+    dmgPerMin: 'Ulaşamayacağın killerin peşinden koşmak yerine ön safı güvenle vuracak şekilde konumlan.',
+  },
+  ko: {
+    csPerMin: 'CS 목표를 정하고 첫 귀환까지 막타를 챙겨라 — 교전 중에도 미니언을 놓치지 마라.',
+    visPerMin: '와드 충전이 차면 두 개 모두 쓰고 귀환마다 적 와드 하나를 지워라.',
+    kp: '오브젝트를 위해 모여라 — 슬로우 푸시로 라인을 비우고 한타가 시작되기 전에 합류하라.',
+    deaths: '플레이 전에 "여기서 뭐가 날 죽이지?"를 묻고 적 쿨다운을 존중하라; 밀기 전에 와드하라.',
+    goldPerMin: '노는 시간을 줄여라: 목적을 갖고 귀환한 뒤 웨이브를 챙겨라 — 노는 시간은 잃은 골드다.',
+    dmgPerMin: '닿지 않는 킬을 쫓지 말고 매 교전에서 안전하게 앞라인을 때리도록 위치를 잡아라.',
+  },
+  zh: {
+    csPerMin: '设定补刀目标，第一次回城前把兵补好——换血时也别漏兵。',
+    visPerMin: '饰品充能一好就用掉两次，每次回城清掉一个敌方眼。',
+    kp: '为资源集合——用慢推离线，在团战开始前赶到。',
+    deaths: '每次行动前问“这里什么会杀我？”，尊重敌方技能CD；推线前先做视野。',
+    goldPerMin: '减少空闲：有目的地回城，再接兵线——发呆就是丢金币。',
+    dmgPerMin: '调整站位安全地打前排，别去追打不到的人头。',
+  },
+  ja: {
+    csPerMin: 'CS目標を決め、最初のリコールまでラストヒットを取る——トレード中もミニオンを逃さない。',
+    visPerMin: 'トリンケットは2チャージ溜まったら使い、リコールごとに敵ワードを1つ消す。',
+    kp: 'オブジェクトのため集合——スロープッシュでレーンを離れ、戦闘開始前に合流する。',
+    deaths: '動く前に「ここで何に殺される?」と問い、敵のCDを尊重；プッシュ前にワードを置く。',
+    goldPerMin: '無駄な時間を減らす：目的を持ってリコールし、ウェーブを回収——待機はゴールドの損失。',
+    dmgPerMin: '届かないキルを追わず、毎戦フロントラインを安全に叩ける位置取りをする。',
+  },
+  vi: {
+    csPerMin: 'Đặt mục tiêu lính và last-hit đến lần về đầu tiên — đừng bỏ lỡ lính khi trao đổi.',
+    visPerMin: 'Dùng cả hai lượt mắt khi sẵn sàng và dọn một mắt địch mỗi lần về nhà.',
+    kp: 'Tụ tập vì mục tiêu — rời đường khi đẩy chậm và tham gia giao tranh trước khi nó bắt đầu.',
+    deaths: 'Trước mỗi pha, tự hỏi "cái gì giết mình ở đây?" và tôn trọng hồi chiêu địch; cắm mắt trước khi đẩy.',
+    goldPerMin: 'Giảm thời gian chết: về nhà có mục đích rồi bắt lính — thời gian rảnh là vàng bị mất.',
+    dmgPerMin: 'Đổi vị trí để đánh tuyến đầu an toàn thay vì đuổi theo mạng ngoài tầm với.',
+  },
+};
+
 // ── runtime ───────────────────────────────────────────────────────────
 let _lang = localStorage.getItem('lolcoach_lang');
 if (!_lang || !LANGS[_lang]) {
@@ -378,6 +487,11 @@ function tRole(r) {
 function tMetric(key) {
   const L = METRIC_LABELS[_lang] || METRIC_LABELS.en;
   return L[key] || METRIC_LABELS.en[key] || key;
+}
+// Build the localized "3 things to fix" text from the ranked gaps (offline mode).
+function templateCoach(gaps) {
+  const T = TIPS[_lang] || TIPS.en;
+  return gaps.map((g, i) => `${i + 1}. ${tMetric(g.key)} — ${T[g.key] || TIPS.en[g.key] || ''}`).join('\n\n');
 }
 
 // Fill every element carrying data-i18n / data-i18n-ph with the current language.
