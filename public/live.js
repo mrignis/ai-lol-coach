@@ -33,12 +33,17 @@ function render(d) {
   ].map(([k, v]) => `<div class="live-stat"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
 
   if (!d.nudges.length) {
-    $('liveNudges').innerHTML = `<div class="nudge info">${t('onTrack')}</div>`;
+    $('liveNudges').innerHTML = `<div class="nudge info">${escapeHtml(t('onTrack'))}</div>`;
   } else {
+    // The server sends {code, params}; render them in the current language.
     $('liveNudges').innerHTML = d.nudges
-      .map(n => `<div class="nudge ${n.level}">${n.text}</div>`)
+      .map(n => `<div class="nudge ${n.level}">${escapeHtml(n.text || tNudge(n.code, n.params))}</div>`)
       .join('');
   }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 }
 
 async function poll() {
@@ -56,11 +61,21 @@ async function poll() {
 }
 
 // AI recommendation — polled less often (LLM call is heavier than the widget).
+let lastAi = null;
 async function loadAiTip() {
   try {
     const d = await (await fetch(`/api/live-coach?bucket=${bucket}&lang=${getLang()}`)).json();
-    if (d.inGame && d.ready && d.tip) $('aiTip').textContent = d.tip;
+    if (!d.inGame || !d.ready) { lastAi = null; return; }
+    lastAi = d;
+    renderAiTip();
   } catch { /* best-effort */ }
+}
+
+function renderAiTip() {
+  if (!lastAi) return;
+  // `tip` is LLM prose (already written in the chosen language); when the LLM is
+  // offline the server sends a `code` instead, which we localize here.
+  $('aiTip').textContent = lastAi.tip || tNudge(lastAi.code, lastAi.params);
 }
 
 // ── Overlay mode (?overlay=1): transparent, compact, user-configurable ──

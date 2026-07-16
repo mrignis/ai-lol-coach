@@ -144,10 +144,12 @@ export async function liveTip({ me, gameTimeSec, role, nudges, lang }) {
   } catch (e) {
     console.warn('[llm] liveTip failed:', e.message);
   }
-  const fallback = nudges && nudges.length
-    ? nudges[0].text
-    : 'Play safe, ward key entrances, and only fight with a numbers or cooldown advantage.';
-  return { tip: fallback, source: 'template' };
+  // No LLM reachable: hand back a nudge CODE so the client can render it in the
+  // player's language (an English string here would ignore the language switch).
+  const fb = nudges && nudges.length ? nudges[0] : null;
+  return fb
+    ? { tip: null, code: fb.code, params: fb.params, source: 'template' }
+    : { tip: null, code: 'safeDefault', source: 'template' };
 }
 
 // Returns { text, source }. Falls back to a template if the provider fails,

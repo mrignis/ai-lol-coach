@@ -45,36 +45,46 @@ function lastEventTime(events, name) {
 }
 
 // Informational prompts only — max 3, gentlest first.
+// Returns {level, code, params}: the server has no UI language, so the client
+// renders each code through i18n (tNudge) in whatever language is selected.
 export function buildNudges(me, role, gameTime, events, gold, bucket = 'mid') {
   const min = Math.max(gameTime / 60, 0.5);
   const bench = (BENCHMARKS[role] || BENCHMARKS.MIDDLE)[bucket];
   const nudges = [];
 
   // Player-focused (the product's whole point: coach THIS player).
+  // CS is checked from 3:00 so early-game drift is caught while it's fixable.
   const csPerMin = me.scores.creepScore / min;
-  if (gameTime > 360 && role !== 'UTILITY' && csPerMin < bench.csPerMin * 0.85) {
-    nudges.push({ level: 'warn', text: `CS pace low — ${csPerMin.toFixed(1)}/min vs ~${bench.csPerMin} target. Grab the next wave.` });
+  if (gameTime > 180 && role !== 'UTILITY' && csPerMin < bench.csPerMin * 0.85) {
+    nudges.push({ level: 'warn', code: 'csPace', params: { cs: csPerMin.toFixed(1), target: bench.csPerMin } });
   }
   const visPerMin = (me.scores.wardScore || 0) / min;
   if (gameTime > 480 && visPerMin < bench.visPerMin * 0.7) {
-    nudges.push({ level: 'warn', text: `Vision is thin — ward before you push or path through fog.` });
+    nudges.push({ level: 'warn', code: 'vision' });
   }
   if (me.scores.deaths >= 4) {
-    nudges.push({ level: 'warn', text: `${me.scores.deaths} deaths — respect their cooldowns and ward your flanks.` });
+    nudges.push({ level: 'warn', code: 'deaths', params: { n: me.scores.deaths } });
   }
   if (gold >= 1400) {
-    nudges.push({ level: 'info', text: `${gold}g unspent — recall on a good wave and spend it.` });
+    nudges.push({ level: 'info', code: 'gold', params: { gold } });
+  }
+  // First jungle gank window (~2:30–8:00) — flag it while there's still no vision.
+  if (gameTime > 150 && gameTime < 480 && (me.scores.wardScore || 0) < 2) {
+    nudges.push({ level: 'info', code: 'earlyWard' });
   }
 
   // Objective soft-timers (least patch-fragile: dragon + baron only).
   const lastDragon = lastEventTime(events, 'DragonKill');
   if (lastDragon != null) {
     const next = lastDragon + DRAGON_RESPAWN - gameTime;
-    if (next > 0 && next <= 45) nudges.push({ level: 'info', text: `Dragon up in ~${clamp(next)}s — start warding/pathing there.` });
+    if (next > 0 && next <= 45) nudges.push({ level: 'info', code: 'dragon', params: { sec: clamp(next) } });
   }
   const lastBaron = lastEventTime(events, 'BaronKill');
   const baronNext = lastBaron != null ? lastBaron + BARON_RESPAWN - gameTime : BARON_FIRST - gameTime;
-  if (baronNext > 0 && baronNext <= 45) nudges.push({ level: 'info', text: `Baron up in ~${clamp(baronNext)}s — set vision around the pit.` });
+  if (baronNext > 0 && baronNext <= 45) nudges.push({ level: 'info', code: 'baron', params: { sec: clamp(baronNext) } });
+
+  // Never leave the player staring at an empty widget in the first minutes.
+  if (!nudges.length && gameTime < 300) nudges.push({ level: 'info', code: 'earlyFocus' });
 
   return nudges.slice(0, 3);
 }
@@ -118,12 +128,13 @@ export async function liveCoachResponse(bucket = 'mid', lang = 'en') {
   const data = await fetchLiveData();
   const base = buildLiveResponse(data, bucket);
   if (!base.ready) return { inGame: base.inGame !== false, ready: false };
-  const { tip, source } = await liveTip({
+  const { tip, code, params, source } = await liveTip({
     me: base.me,
     gameTimeSec: base.gameTimeSec,
     role: base.me.role,
     nudges: base.nudges,
     lang,
   });
-  return { inGame: true, ready: true, tip, source };
+  // tip = LLM prose (already in `lang`); code/params = template the client localizes.
+  return { inGame: true, ready: true, tip, code, params, source };
 }

@@ -483,6 +483,154 @@ const TIPS = {
   },
 };
 
+// Live in-game nudges. The server sends a code + params (it has no language),
+// and we render them here so they follow the chosen UI language.
+const NUDGES = {
+  en: {
+    csPace: 'CS pace low — {cs}/min vs ~{target} target. Grab the next wave.',
+    vision: 'Vision is thin — ward before you push or path through fog.',
+    deaths: '{n} deaths — respect their cooldowns and ward your flanks.',
+    gold: '{gold}g unspent — recall on a good wave and spend it.',
+    dragon: 'Dragon up in ~{sec}s — start warding and pathing there.',
+    baron: 'Baron up in ~{sec}s — set vision around the pit.',
+    earlyWard: 'First gank window — drop a ward at your lane entrance now.',
+    earlyFocus: 'Early game: focus on last-hitting and play safe until you find an opening.',
+    safeDefault: 'Play safe, ward key entrances, and fight only with a numbers or cooldown advantage.',
+  },
+  uk: {
+    csPace: 'Темп фарму низький — {cs}/хв замість ~{target}. Забери наступну хвилю.',
+    vision: 'Мало огляду — постав вард, перш ніж пушити чи йти в туман.',
+    deaths: 'Смертей: {n} — зважай на кулдауни ворога і вардь фланги.',
+    gold: '{gold}g не витрачено — повернись на добрій хвилі й закупись.',
+    dragon: 'Дракон за ~{sec}с — став вард і рухайся туди.',
+    baron: 'Барон за ~{sec}с — постав огляд навколо ями.',
+    earlyWard: 'Перше вікно ганку — постав вард на вході в лінію.',
+    earlyFocus: 'Ранній етап: зосередься на добиванні й грай безпечно, поки не з’явиться шанс.',
+    safeDefault: 'Грай безпечно, вардь ключові входи й бийся лише з перевагою в числі чи кулдаунах.',
+  },
+  fr: {
+    csPace: 'Rythme de CS bas — {cs}/min contre ~{target}. Récupère la prochaine vague.',
+    vision: 'Peu de vision — pose une ward avant de push ou de traverser le brouillard.',
+    deaths: '{n} morts — respecte leurs cooldowns et ward tes flancs.',
+    gold: '{gold}g non dépensés — recall sur une bonne vague et achète.',
+    dragon: 'Dragon dans ~{sec}s — ward et dirige-toi là-bas.',
+    baron: 'Baron dans ~{sec}s — pose de la vision autour de la fosse.',
+    earlyWard: 'Première fenêtre de gank — pose une ward à l’entrée de ta voie.',
+    earlyFocus: 'Début de partie : concentre-toi sur les last-hits et joue safe.',
+    safeDefault: 'Joue safe, ward les entrées clés et ne combats qu’avec un avantage.',
+  },
+  de: {
+    csPace: 'CS-Tempo niedrig — {cs}/min statt ~{target}. Nimm die nächste Welle mit.',
+    vision: 'Wenig Sicht — warde, bevor du pushst oder durch den Nebel gehst.',
+    deaths: '{n} Tode — respektiere ihre Cooldowns und warde deine Flanken.',
+    gold: '{gold}g nicht ausgegeben — recalle auf einer guten Welle und kaufe.',
+    dragon: 'Drache in ~{sec}s — warde und laufe hin.',
+    baron: 'Baron in ~{sec}s — setze Sicht um die Grube.',
+    earlyWard: 'Erstes Gank-Fenster — setze jetzt eine Ward am Lane-Eingang.',
+    earlyFocus: 'Frühes Spiel: konzentriere dich auf Lasthits und spiele sicher.',
+    safeDefault: 'Spiele sicher, warde wichtige Eingänge und kämpfe nur mit Vorteil.',
+  },
+  es: {
+    csPace: 'Ritmo de CS bajo — {cs}/min frente a ~{target}. Recoge la siguiente oleada.',
+    vision: 'Poca visión — pon ward antes de empujar o cruzar la niebla.',
+    deaths: '{n} muertes — respeta sus cooldowns y pon ward en los flancos.',
+    gold: '{gold}g sin gastar — recall en una buena oleada y compra.',
+    dragon: 'Dragón en ~{sec}s — pon visión y ve hacia allí.',
+    baron: 'Barón en ~{sec}s — pon visión alrededor del foso.',
+    earlyWard: 'Primera ventana de gank — pon un ward en la entrada de tu línea.',
+    earlyFocus: 'Inicio: céntrate en los last-hits y juega seguro.',
+    safeDefault: 'Juega seguro, pon ward en las entradas clave y pelea solo con ventaja.',
+  },
+  pl: {
+    csPace: 'Niskie tempo CS — {cs}/min zamiast ~{target}. Weź następną falę.',
+    vision: 'Mało wizji — postaw ward, zanim zaczniesz pushować lub wejdziesz we mgłę.',
+    deaths: 'Zgonów: {n} — szanuj ich cooldowny i staw wardy na flankach.',
+    gold: '{gold}g niewydane — wróć na dobrej fali i kup przedmioty.',
+    dragon: 'Smok za ~{sec}s — postaw wizję i idź tam.',
+    baron: 'Baron za ~{sec}s — ustaw wizję wokół dołu.',
+    earlyWard: 'Pierwsze okno na gank — postaw ward przy wejściu na linię.',
+    earlyFocus: 'Wczesna gra: skup się na dobijaniu i graj bezpiecznie.',
+    safeDefault: 'Graj bezpiecznie, staw wardy przy kluczowych wejściach i walcz tylko z przewagą.',
+  },
+  pt: {
+    csPace: 'Ritmo de CS baixo — {cs}/min contra ~{target}. Pegue a próxima onda.',
+    vision: 'Pouca visão — warde antes de empurrar ou atravessar a névoa.',
+    deaths: '{n} mortes — respeite os cooldowns deles e warde seus flancos.',
+    gold: '{gold}g sem gastar — volte numa boa onda e compre.',
+    dragon: 'Dragão em ~{sec}s — warde e vá para lá.',
+    baron: 'Barão em ~{sec}s — coloque visão em volta do covil.',
+    earlyWard: 'Primeira janela de gank — coloque uma ward na entrada da sua rota.',
+    earlyFocus: 'Início: foque nos last-hits e jogue seguro.',
+    safeDefault: 'Jogue seguro, warde as entradas principais e lute só com vantagem.',
+  },
+  ru: {
+    csPace: 'Низкий темп фарма — {cs}/мин вместо ~{target}. Забери следующую волну.',
+    vision: 'Мало обзора — поставь вард, прежде чем пушить или идти в туман.',
+    deaths: 'Смертей: {n} — уважай их кулдауны и вардь фланги.',
+    gold: '{gold}g не потрачено — вернись на хорошей волне и закупись.',
+    dragon: 'Дракон через ~{sec}с — поставь вард и двигайся туда.',
+    baron: 'Барон через ~{sec}с — поставь обзор вокруг ямы.',
+    earlyWard: 'Первое окно ганка — поставь вард на входе в линию.',
+    earlyFocus: 'Ранняя стадия: сосредоточься на добивании и играй безопасно.',
+    safeDefault: 'Играй безопасно, вардь ключевые входы и дерись только с преимуществом.',
+  },
+  tr: {
+    csPace: 'CS temposu düşük — {cs}/dk, hedef ~{target}. Sonraki dalgayı al.',
+    vision: 'Görüş az — itmeden veya sisten geçmeden önce ward bas.',
+    deaths: '{n} ölüm — cooldownlarına saygı duy ve yanlarını wardla.',
+    gold: '{gold}g harcanmadı — iyi bir dalgada dön ve alışveriş yap.',
+    dragon: 'Ejder ~{sec}s sonra — ward bas ve oraya yönel.',
+    baron: 'Baron ~{sec}s sonra — çukurun etrafına görüş kur.',
+    earlyWard: 'İlk gank penceresi — koridor girişine hemen ward bas.',
+    earlyFocus: 'Erken oyun: son vuruşlara odaklan ve güvenli oyna.',
+    safeDefault: 'Güvenli oyna, kilit girişleri wardla ve sadece avantajlıyken dövüş.',
+  },
+  ko: {
+    csPace: 'CS 속도 느림 — {cs}/분 (목표 ~{target}). 다음 웨이브를 챙겨라.',
+    vision: '시야가 부족 — 밀거나 안개로 들어가기 전에 와드를 박아라.',
+    deaths: '{n}번 죽음 — 적 쿨다운을 존중하고 측면에 와드를 박아라.',
+    gold: '{gold}골드 미사용 — 좋은 웨이브에 귀환해서 아이템을 사라.',
+    dragon: '드래곤 ~{sec}초 후 — 와드 박고 그쪽으로 이동하라.',
+    baron: '바론 ~{sec}초 후 — 바론 둥지 주변 시야를 잡아라.',
+    earlyWard: '첫 갱 타이밍 — 지금 라인 입구에 와드를 박아라.',
+    earlyFocus: '초반: 막타에 집중하고 안전하게 플레이하라.',
+    safeDefault: '안전하게 플레이하고 주요 입구에 와드를 박되, 유리할 때만 싸워라.',
+  },
+  zh: {
+    csPace: '补刀速度偏慢 — {cs}/分，目标 ~{target}。接下一波兵。',
+    vision: '视野不足 — 推线或走进战争迷雾前先插眼。',
+    deaths: '已阵亡 {n} 次 — 注意敌方技能CD，侧翼插眼。',
+    gold: '{gold} 金币未花 — 找好兵线回城补装备。',
+    dragon: '小龙约 {sec} 秒后刷新 — 提前插眼并向那里靠拢。',
+    baron: '大龙约 {sec} 秒后刷新 — 在龙坑周围做视野。',
+    earlyWard: '首次gank窗口 — 立刻在线路入口插眼。',
+    earlyFocus: '前期：专注补刀，稳住别送。',
+    safeDefault: '稳健运营，关键入口插眼，只在有优势时开战。',
+  },
+  ja: {
+    csPace: 'CSペースが遅い — {cs}/分（目標 ~{target}）。次のウェーブを取ろう。',
+    vision: '視界が薄い — プッシュや霧に入る前にワードを置こう。',
+    deaths: '{n}回デス — 敵のCDを警戒し、側面にワードを。',
+    gold: '{gold}G未使用 — 良いウェーブでリコールして買い物を。',
+    dragon: 'ドラゴンまで約{sec}秒 — ワードを置いて向かおう。',
+    baron: 'バロンまで約{sec}秒 — ピット周辺に視界を確保。',
+    earlyWard: '最初のガンク時間 — 今すぐレーン入口にワードを。',
+    earlyFocus: '序盤：ラストヒットに集中し、安全に立ち回ろう。',
+    safeDefault: '安全に立ち回り、主要な入口にワードを置き、有利な時だけ戦おう。',
+  },
+  vi: {
+    csPace: 'Tốc độ farm thấp — {cs}/phút so với ~{target}. Bắt đợt lính tiếp theo.',
+    vision: 'Thiếu tầm nhìn — cắm mắt trước khi đẩy hoặc đi vào sương mù.',
+    deaths: '{n} lần chết — để ý hồi chiêu của địch và cắm mắt hai bên.',
+    gold: 'Còn {gold} vàng chưa tiêu — về nhà đúng đợt lính và mua đồ.',
+    dragon: 'Rồng hồi sau ~{sec}s — cắm mắt và di chuyển tới đó.',
+    baron: 'Baron hồi sau ~{sec}s — tạo tầm nhìn quanh hang.',
+    earlyWard: 'Cửa sổ gank đầu tiên — cắm mắt ở lối vào đường ngay.',
+    earlyFocus: 'Đầu trận: tập trung last-hit và chơi an toàn.',
+    safeDefault: 'Chơi an toàn, cắm mắt lối vào chính và chỉ giao tranh khi có lợi thế.',
+  },
+};
+
 // ── runtime ───────────────────────────────────────────────────────────
 let _lang = localStorage.getItem('lolcoach_lang');
 if (!_lang || !LANGS[_lang]) {
@@ -506,6 +654,14 @@ function tMetric(key) {
   const L = METRIC_LABELS[_lang] || METRIC_LABELS.en;
   return L[key] || METRIC_LABELS.en[key] || key;
 }
+// Render a live nudge the server sent as {code, params} in the current language.
+function tNudge(code, params) {
+  const L = NUDGES[_lang] || NUDGES.en;
+  let s = L[code] || NUDGES.en[code] || code;
+  if (params) for (const k in params) s = s.split('{' + k + '}').join(params[k]);
+  return s;
+}
+
 // Build the localized "3 things to fix" text from the ranked gaps (offline mode).
 function templateCoach(gaps) {
   const T = TIPS[_lang] || TIPS.en;
