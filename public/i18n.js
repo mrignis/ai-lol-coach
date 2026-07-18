@@ -780,6 +780,89 @@ const NUDGES = {
 };
 for (const l in NUDGES_LATE) Object.assign(NUDGES[l], NUDGES_LATE[l]);
 
+// Deep-analysis nudges: itemization, repeat killer, gold deficit.
+const NUDGES_DEEP = {
+  en: {
+    buyArmor: '{n} enemies deal physical damage and you have only {armor} armor — buy an armor item next back.',
+    buyMR: '{n} enemies deal magic damage and you have only {mr} MR — buy a magic resist item next back.',
+    nemesis: '{champ} has killed you {n} times — stop taking that matchup alone, play near your team.',
+    goldBehind: "You're ~{k}k gold behind — stop forcing fights, farm side waves and wait for their mistake.",
+  },
+  uk: {
+    buyArmor: '{n} ворогів б’ють фізичною шкодою, а в тебе лише {armor} броні — купи броню наступного разу.',
+    buyMR: '{n} ворогів б’ють магією, а в тебе лише {mr} магічного опору — купи опір наступного разу.',
+    nemesis: '{champ} вбив тебе {n} рази — не грай проти нього сам, тримайся ближче до команди.',
+    goldBehind: 'Ти відстаєш на ~{k}к золота — не форси бійки, фарми бічні хвилі й чекай на їхню помилку.',
+  },
+  fr: {
+    buyArmor: '{n} ennemis font des dégâts physiques et tu n’as que {armor} armure — achète de l’armure au prochain retour.',
+    buyMR: '{n} ennemis font des dégâts magiques et tu n’as que {mr} RM — achète de la résistance magique.',
+    nemesis: '{champ} t’a tué {n} fois — ne prends plus ce duel seul, reste près de ton équipe.',
+    goldBehind: 'Tu as ~{k}k d’or de retard — arrête de forcer, farme les vagues latérales et attends leur erreur.',
+  },
+  de: {
+    buyArmor: '{n} Gegner machen physischen Schaden und du hast nur {armor} Rüstung — kauf Rüstung beim nächsten Back.',
+    buyMR: '{n} Gegner machen magischen Schaden und du hast nur {mr} MR — kauf Magieresistenz.',
+    nemesis: '{champ} hat dich {n}× getötet — geh dieses Duell nicht mehr allein ein, bleib beim Team.',
+    goldBehind: 'Du liegst ~{k}k Gold zurück — erzwinge nichts, farme Seitenwellen und warte auf ihren Fehler.',
+  },
+  es: {
+    buyArmor: '{n} enemigos hacen daño físico y solo tienes {armor} de armadura — compra armadura al volver.',
+    buyMR: '{n} enemigos hacen daño mágico y solo tienes {mr} de RM — compra resistencia mágica.',
+    nemesis: '{champ} te ha matado {n} veces — no pelees ese duelo solo, quédate cerca de tu equipo.',
+    goldBehind: 'Vas ~{k}k de oro por detrás — no fuerces peleas, farmea líneas laterales y espera su error.',
+  },
+  pl: {
+    buyArmor: '{n} przeciwników zadaje obrażenia fizyczne, a masz tylko {armor} pancerza — kup pancerz.',
+    buyMR: '{n} przeciwników zadaje obrażenia magiczne, a masz tylko {mr} OM — kup odporność na magię.',
+    nemesis: '{champ} zabił cię {n} razy — nie graj tego starcia sam, trzymaj się drużyny.',
+    goldBehind: 'Jesteś ~{k}k złota do tyłu — nie wymuszaj walk, farm boczne fale i czekaj na ich błąd.',
+  },
+  pt: {
+    buyArmor: '{n} inimigos causam dano físico e você tem só {armor} de armadura — compre armadura.',
+    buyMR: '{n} inimigos causam dano mágico e você tem só {mr} de RM — compre resistência mágica.',
+    nemesis: '{champ} te matou {n} vezes — não encare esse duelo sozinho, fique perto do time.',
+    goldBehind: 'Você está ~{k}k de ouro atrás — não force lutas, farme rotas laterais e espere o erro deles.',
+  },
+  ru: {
+    buyArmor: '{n} врагов бьют физическим уроном, а у тебя лишь {armor} брони — купи броню.',
+    buyMR: '{n} врагов бьют магией, а у тебя лишь {mr} сопротивления магии — купи МР.',
+    nemesis: '{champ} убил тебя {n} раза — не играй против него один, держись команды.',
+    goldBehind: 'Ты отстаёшь на ~{k}к золота — не форси драки, фарми боковые волны и жди их ошибки.',
+  },
+  tr: {
+    buyArmor: '{n} rakip fiziksel hasar veriyor ve sadece {armor} zırhın var — zırh al.',
+    buyMR: '{n} rakip büyü hasarı veriyor ve sadece {mr} BD var — büyü direnci al.',
+    nemesis: '{champ} seni {n} kez öldürdü — bu eşleşmeye tek girme, takımının yanında kal.',
+    goldBehind: '~{k}k altın geridesin — savaş zorlama, yan koridorları farmla ve hatalarını bekle.',
+  },
+  ko: {
+    buyArmor: '적 {n}명이 물리 피해인데 방어력이 {armor}뿐 — 다음 귀환에 방어구를 사라.',
+    buyMR: '적 {n}명이 마법 피해인데 마저가 {mr}뿐 — 다음 귀환에 마법 저항을 사라.',
+    nemesis: '{champ}에게 {n}번 죽었다 — 혼자 상대하지 말고 팀 근처에서 플레이하라.',
+    goldBehind: '골드 약 {k}k 뒤진다 — 무리한 교전 대신 사이드 웨이브를 먹고 상대 실수를 기다려라.',
+  },
+  zh: {
+    buyArmor: '{n}名敌人打物理伤害，你只有{armor}护甲——下次回城买护甲。',
+    buyMR: '{n}名敌人打魔法伤害，你只有{mr}魔抗——下次回城买魔抗。',
+    nemesis: '{champ}已经杀了你{n}次——别再单独对线他，靠近队友行动。',
+    goldBehind: '你落后约{k}k经济——别强开团，去吃边路兵线等对面失误。',
+  },
+  ja: {
+    buyArmor: '敵{n}人が物理ダメージなのに防御力が{armor}しかない——次のリコールで防具を買え。',
+    buyMR: '敵{n}人が魔法ダメージなのに魔法防御が{mr}しかない——次のリコールでMRを買え。',
+    nemesis: '{champ}に{n}回殺されている——単独で相手にせず、味方の近くで動け。',
+    goldBehind: 'ゴールドで約{k}k負けている——無理に戦わず、サイドを farm して相手のミスを待て。',
+  },
+  vi: {
+    buyArmor: '{n} kẻ địch gây sát thương vật lý mà bạn chỉ có {armor} giáp — hãy mua giáp lần về sau.',
+    buyMR: '{n} kẻ địch gây sát thương phép mà bạn chỉ có {mr} kháng phép — hãy mua kháng phép.',
+    nemesis: '{champ} đã giết bạn {n} lần — đừng đối đầu một mình, hãy đi cùng đồng đội.',
+    goldBehind: 'Bạn kém khoảng {k}k vàng — đừng ép giao tranh, farm đường biên và chờ họ sai lầm.',
+  },
+};
+for (const l in NUDGES_DEEP) Object.assign(NUDGES[l], NUDGES_DEEP[l]);
+
 // ── runtime ───────────────────────────────────────────────────────────
 let _lang = localStorage.getItem('lolcoach_lang');
 if (!_lang || !LANGS[_lang]) {

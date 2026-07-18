@@ -1,6 +1,7 @@
 import https from 'node:https';
 import { BENCHMARKS } from './benchmarks.js';
 import { liveTip } from './llm.js';
+import { getChampions, isAP } from './ddragon.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // League "Live Client Data API" — runs LOCALLY on the player's PC while a
@@ -58,7 +59,11 @@ const scorerOf = name => (/T1/.test(name || '') ? 'CHAOS' : 'ORDER');
 
 // Read the whole board, not just the player. This is what makes advice
 // situational instead of generic — the LLM and the rules both consume it.
-export function gameContext(data, me) {
+// Item gold is the honest way to read who is actually ahead: Live Client Data
+// gives every item's real price, so no static price table can go stale.
+const itemGold = p => (p.items || []).reduce((a, it) => a + (it.price || 0) * (it.count || 1), 0);
+
+export async function gameContext(data, me) {
   const gameTime = data.gameData?.gameTime || 0;
   const players = data.allPlayers || [];
   const events = data.events?.Events || [];
@@ -92,7 +97,50 @@ export function gameContext(data, me) {
   const lastBaron = lastEventTime(events, 'BaronKill');
   const baronUpIn = lastBaron != null ? lastBaron + BARON_RESPAWN - gameTime : BARON_FIRST - gameTime;
 
+  // ── deep analysis: items, damage profile, defenses, nemesis ──────────
+  const teamItemGold = arr => arr.reduce((a, p) => a + itemGold(p), 0);
+  const myGold = teamItemGold(mine);
+  const foeGold = teamItemGold(foes);
+
+  // Which damage type is actually hitting you? Drives the defensive-item call.
+  let apCount = 0;
+  try {
+    const champs = await getChampions();
+    apCount = foes.filter(p => isAP(p.championName, champs)).length;
+  } catch { /* Data Dragon offline — skip itemization advice, everything else still works */ }
+  const adCount = foes.length - apCount;
+
+  const stats = data.activePlayer?.championStats || {};
+  const myName = me.riotId || me.summonerName;
+
+  // Who keeps killing you — a Bronze-defining pattern worth naming out loud.
+  const killsOnMe = {};
+  let myKillsFromEvents = 0;
+  for (const e of events) {
+    if (e.EventName !== 'ChampionKill') continue;
+    if (e.VictimName === myName && e.KillerName) killsOnMe[e.KillerName] = (killsOnMe[e.KillerName] || 0) + 1;
+    if (e.KillerName === myName) myKillsFromEvents++;
+  }
+  const nemesisId = Object.keys(killsOnMe).sort((a, b) => killsOnMe[b] - killsOnMe[a])[0];
+  const nemesisPlayer = nemesisId ? players.find(p => (p.riotId || p.summonerName) === nemesisId) : null;
+
+  const teamKillsTotal = sumKills(mine);
+  // Clamped: a disconnect or odd payload can otherwise report >100%.
+  const myKP = teamKillsTotal
+    ? Math.min(100, Math.round(((me.scores.kills + me.scores.assists) / teamKillsTotal) * 100))
+    : null;
+
   return {
+    goldDiff: Math.round(myGold - foeGold),
+    teamItemGold: myGold,
+    enemyItemGold: foeGold,
+    enemyDamage: { ad: adCount, ap: apCount },
+    myArmor: Math.round(stats.armor || 0),
+    myMagicResist: Math.round(stats.magicResist || 0),
+    myKP,
+    nemesis: nemesisPlayer && killsOnMe[nemesisId] >= 2
+      ? { champion: nemesisPlayer.championName, times: killsOnMe[nemesisId] }
+      : null,
     phase: gamePhase(gameTime),
     myTeam, enemyTeam,
     teamKills: sumKills(mine),
@@ -136,11 +184,31 @@ export function buildNudges(me, role, gameTime, events, gold, bucket = 'mid', ct
       nudges.push({ level: 'info', code: 'soulPointUs' });
     }
     if (ctx.inhibs.theirs > 0) nudges.push({ level: 'warn', code: 'inhibDown' });
-    if (phase !== 'early' && ctx.fedEnemy && ctx.fedEnemy.k >= 8 && ctx.fedEnemy.k > ctx.fedEnemy.d * 2) {
+    // If the fed enemy is also the one killing you, the nemesis line says the
+    // same thing more usefully — don't spend two slots on one champion.
+    const nemesisIsFed = ctx.nemesis && ctx.fedEnemy && ctx.nemesis.champion === ctx.fedEnemy.champion;
+    if (ctx.nemesis && ctx.nemesis.times >= 3) {
+      nudges.push({ level: 'warn', code: 'nemesis', params: { champ: ctx.nemesis.champion, n: ctx.nemesis.times } });
+    }
+    if (!nemesisIsFed && phase !== 'early' && ctx.fedEnemy && ctx.fedEnemy.k >= 8 && ctx.fedEnemy.k > ctx.fedEnemy.d * 2) {
       nudges.push({ level: 'warn', code: 'fedEnemy', params: { champ: ctx.fedEnemy.champion, k: ctx.fedEnemy.k, d: ctx.fedEnemy.d } });
     }
     if (phase !== 'early' && ctx.myLevel && ctx.enemyAvgLevel - ctx.myLevel >= 2) {
       nudges.push({ level: 'warn', code: 'behindLevels', params: { n: Math.round(ctx.enemyAvgLevel - ctx.myLevel) } });
+    }
+
+    // ── itemization: the highest-leverage habit most players never build ──
+    // Only after the first real shopping trip, so we don't nag at level 3.
+    if (phase !== 'early' && ctx.enemyDamage) {
+      const { ad, ap } = ctx.enemyDamage;
+      if (ad >= 3 && ad > ap && ctx.myArmor > 0 && ctx.myArmor < 80) {
+        nudges.push({ level: 'warn', code: 'buyArmor', params: { n: ad, armor: ctx.myArmor } });
+      } else if (ap >= 3 && ap > ad && ctx.myMagicResist > 0 && ctx.myMagicResist < 60) {
+        nudges.push({ level: 'warn', code: 'buyMR', params: { n: ap, mr: ctx.myMagicResist } });
+      }
+    }
+    if (phase !== 'early' && ctx.goldDiff <= -3000) {
+      nudges.push({ level: 'warn', code: 'goldBehind', params: { k: Math.round(-ctx.goldDiff / 1000) } });
     }
   }
 
@@ -186,7 +254,7 @@ export function buildNudges(me, role, gameTime, events, gold, bucket = 'mid', ct
 }
 
 // Shape the raw allgamedata into what the widget needs.
-export function buildLiveResponse(data, bucket = 'mid') {
+export async function buildLiveResponse(data, bucket = 'mid') {
   const gameTime = data.gameData?.gameTime || 0;
   const myId = data.activePlayer?.riotId || data.activePlayer?.summonerName;
   const players = data.allPlayers || [];
@@ -198,7 +266,7 @@ export function buildLiveResponse(data, bucket = 'mid') {
   const gold = Math.round(data.activePlayer?.currentGold || 0);
   const events = data.events?.Events || [];
   const min = Math.max(gameTime / 60, 0.5);
-  const ctx = gameContext(data, { ...me, level: data.activePlayer?.level || me.level || 0 });
+  const ctx = await gameContext(data, { ...me, level: data.activePlayer?.level || me.level || 0 });
 
   return {
     inGame: true,
@@ -225,7 +293,7 @@ export function buildLiveResponse(data, bucket = 'mid') {
 // LLM-backed single live recommendation (polled less often than the widget).
 export async function liveCoachResponse(bucket = 'mid', lang = 'en') {
   const data = await fetchLiveData();
-  const base = buildLiveResponse(data, bucket);
+  const base = await buildLiveResponse(data, bucket);
   if (!base.ready) return { inGame: base.inGame !== false, ready: false };
   const { tip, code, params, source } = await liveTip({
     me: base.me,

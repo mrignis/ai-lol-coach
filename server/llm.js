@@ -184,6 +184,16 @@ export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang }) {
     if (ctx.isDead) lines.push(`YOU ARE DEAD — respawn in ${ctx.respawnTimer}s.`);
     if (ctx.enemyAvgLevel) lines.push(`Levels: you ${ctx.myLevel} vs enemy average ${ctx.enemyAvgLevel}.`);
     if (ctx.fedEnemy) lines.push(`Biggest threat: ${ctx.fedEnemy.champion} ${ctx.fedEnemy.k}/${ctx.fedEnemy.d}/${ctx.fedEnemy.a}.`);
+    if (typeof ctx.goldDiff === 'number') {
+      const side = ctx.goldDiff >= 0 ? 'ahead' : 'behind';
+      lines.push(`Item gold: your team is ${Math.abs(ctx.goldDiff)}g ${side} (${ctx.teamItemGold} vs ${ctx.enemyItemGold}).`);
+    }
+    if (ctx.enemyDamage && (ctx.enemyDamage.ad || ctx.enemyDamage.ap)) {
+      lines.push(`Enemy damage split: ${ctx.enemyDamage.ad} AD / ${ctx.enemyDamage.ap} AP. ` +
+        `Your resists: ${ctx.myArmor} armor, ${ctx.myMagicResist} MR — recommend a defensive item if they are low for this stage.`);
+    }
+    if (ctx.nemesis) lines.push(`${ctx.nemesis.champion} has killed you ${ctx.nemesis.times} times this game.`);
+    if (ctx.myKP != null) lines.push(`Your kill participation: ${ctx.myKP}%.`);
     if (ctx.enemies?.length) {
       lines.push('Enemy team: ' + ctx.enemies.map(p => `${p.champion} ${p.k}/${p.d}/${p.a} lvl${p.lvl}`).join(', ') + '.');
     }

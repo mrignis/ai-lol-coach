@@ -60,7 +60,7 @@ app.get('/api/live', async (req, res) => {
   const bucket = ['low', 'mid', 'high'].includes(req.query.bucket) ? req.query.bucket : 'mid';
   try {
     const data = await fetchLiveData();
-    res.json(buildLiveResponse(data, bucket));
+    res.json(await buildLiveResponse(data, bucket));
   } catch (e) {
     if (e.code === 'NOGAME') return res.json({ inGame: false });
     console.error('[live]', e.message);
