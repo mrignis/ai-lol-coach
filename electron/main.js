@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut } from 'electron';
+import { app, BrowserWindow, globalShortcut, desktopCapturer } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import net from 'net';
@@ -72,6 +72,29 @@ function createWindow() {
   }, 1500);
 }
 
+// ── vision loop: let the AI SEE the screen (minimap, positions) ───────
+// Passive screen-reading only, and only while a game is actually running
+// and the overlay is visible. One frame a minute keeps us far inside the
+// Gemini free tier (a 30-min game ≈ 30 calls).
+async function visionLoop() {
+  try {
+    if (!win || win.isDestroyed() || !win.isVisible()) return;
+    const live = await (await fetch(`http://localhost:${PORT}/api/live`)).json();
+    if (!live.inGame || !live.ready) return;
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width: 1280, height: 800 },
+    });
+    const shot = sources[0]?.thumbnail;
+    if (!shot || shot.isEmpty()) return;
+    await fetch(`http://localhost:${PORT}/api/vision`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: shot.toJPEG(60).toString('base64') }),
+    });
+  } catch { /* vision is best-effort; the text-only tip still works */ }
+}
+
 // Ctrl+Shift+X → let clicks pass through to the game (and back).
 function toggleClickThrough() {
   if (!win) return;
@@ -82,6 +105,8 @@ function toggleClickThrough() {
 app.whenReady().then(async () => {
   await ensureServer();
   createWindow();
+  setInterval(visionLoop, 60000);
+  setTimeout(visionLoop, 8000); // first look shortly after launch, not a minute later
   globalShortcut.register('Control+Shift+X', toggleClickThrough);       // click-through on/off
   globalShortcut.register('Control+Shift+H', () => {                      // hide/show overlay
     if (!win) return;

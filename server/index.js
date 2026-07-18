@@ -4,12 +4,13 @@ import { fileURLToPath } from 'url';
 import { config, PLATFORMS } from './config.js';
 import { analyzePlayer } from './analyze.js';
 import { fetchLiveData, buildLiveResponse, liveCoachResponse } from './live.js';
+import { visionTip } from './llm.js';
 import { getNews } from './news.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // vision screenshots arrive as base64 JPEG
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.get('/api/health', (req, res) => {
@@ -69,14 +70,48 @@ app.get('/api/live', async (req, res) => {
 });
 
 // AI live recommendation — LLM reads the current game state (polled ~60s).
+// Latest screen-based tip. The Electron overlay posts a screenshot every ~60s;
+// we analyse it eagerly and the widget picks the result up on its next poll.
+let visionState = { tip: null, ts: 0 };
+let lastCoachLang = 'en'; // vision calls happen out-of-band, so remember the UI language
+
 app.get('/api/live-coach', async (req, res) => {
   const bucket = ['low', 'mid', 'high'].includes(req.query.bucket) ? req.query.bucket : 'mid';
+  lastCoachLang = req.query.lang || lastCoachLang;
   try {
+    // A fresh vision tip (screen + state) beats a state-only tip.
+    if (visionState.tip && Date.now() - visionState.ts < 90000) {
+      return res.json({ inGame: true, ready: true, tip: visionState.tip, source: 'gemini-vision' });
+    }
     res.json(await liveCoachResponse(bucket, req.query.lang || 'en'));
   } catch (e) {
     if (e.code === 'NOGAME') return res.json({ inGame: false });
     console.error('[live-coach]', e.message);
     res.json({ inGame: false });
+  }
+});
+
+// Electron posts { image: <base64 jpeg> } here while a game is running.
+app.post('/api/vision', async (req, res) => {
+  const { image, bucket } = req.body || {};
+  if (!image) return res.status(400).json({ error: 'image required' });
+  try {
+    const data = await fetchLiveData();
+    const base = await buildLiveResponse(data, ['low', 'mid', 'high'].includes(bucket) ? bucket : 'mid');
+    if (!base.ready) return res.json({ ok: false });
+    const tip = await visionTip({
+      imageBase64: image,
+      me: base.me,
+      gameTimeSec: base.gameTimeSec,
+      role: base.me.role,
+      ctx: base.ctx,
+      lang: lastCoachLang,
+    });
+    if (tip) visionState = { tip, ts: Date.now() };
+    res.json({ ok: !!tip });
+  } catch (e) {
+    if (e.code !== 'NOGAME') console.error('[vision]', e.message);
+    res.json({ ok: false });
   }
 });
 

@@ -155,20 +155,10 @@ const PHASE_BRIEF = {
   late: 'LATE GAME. Deaths are near-unpunishable — one bad pick loses Baron and the game. Do NOT give farming or CS advice. Talk about not getting caught, vision before Baron/Elder, waiting for picks, and what to do with the next 90 seconds around objectives.',
 };
 
-export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang }) {
+// The whole board as prompt lines — shared by the text tip and the vision tip.
+function buildContextLines(me, gameTimeSec, role, ctx) {
   const min = Math.max(gameTimeSec / 60, 0.5);
-  const langName = LANG_NAMES[lang] || 'English';
   const phase = ctx?.phase || 'mid';
-  const system =
-    'You are a sharp League of Legends coach watching a LIVE game. You can see the whole ' +
-    'scoreboard and objective state. Give ONE concrete, specific thing to do in the next 90 ' +
-    'seconds, grounded in the actual game state — reference the real numbers, champions or ' +
-    'objectives you were given. Never give generic filler like "farm safely" or "play well". ' +
-    'Never give mechanical spam. Max 30 words, no preamble, speak directly ("you"). ' +
-    PHASE_BRIEF[phase] +
-    (lang && lang !== 'en' ? ` Reply in natural, grammatically correct ${langName}.` : '');
-
-  // Give the model the whole board — without this it can only generalise.
   const lines = [
     `You: ${me.champion} (${role}) lvl ${me.level}, KDA ${me.kills}/${me.deaths}/${me.assists}, ` +
       `CS ${me.cs} (${(me.cs / min).toFixed(1)}/min), vision ${me.wardScore}, ${me.gold}g unspent.`,
@@ -201,6 +191,24 @@ export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang }) {
       lines.push('Your team: ' + ctx.allies.map(p => `${p.champion} ${p.k}/${p.d}/${p.a} lvl${p.lvl}`).join(', ') + '.');
     }
   }
+  return lines;
+}
+
+const COACH_SYSTEM = (phase, lang) => {
+  const langName = LANG_NAMES[lang] || 'English';
+  return 'You are a sharp League of Legends coach watching a LIVE game. You can see the whole ' +
+    'scoreboard and objective state. Give ONE concrete, specific thing to do in the next 90 ' +
+    'seconds, grounded in the actual game state — reference the real numbers, champions or ' +
+    'objectives you were given. Never give generic filler like "farm safely" or "play well". ' +
+    'Never give mechanical spam. Max 30 words, no preamble, speak directly ("you"). ' +
+    PHASE_BRIEF[phase] +
+    (lang && lang !== 'en' ? ` Reply in natural, grammatically correct ${langName}.` : '');
+};
+
+export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang }) {
+  const phase = ctx?.phase || 'mid';
+  const system = COACH_SYSTEM(phase, lang);
+  const lines = buildContextLines(me, gameTimeSec, role, ctx);
   lines.push('What is the single most useful thing to do right now?');
   const user = lines.join('\n');
   try {
@@ -215,6 +223,42 @@ export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang }) {
   return fb
     ? { tip: null, code: fb.code, params: fb.params, source: 'template' }
     : { tip: null, code: 'safeDefault', source: 'template' };
+}
+
+// Vision coaching: the model literally looks at a screenshot of the player's
+// screen (minimap, team positions, health bars, fog) on top of the structured
+// game state. Passive screen-reading only — the "coach over your shoulder"
+// model, no automation. Gemini-only: it's our multimodal-capable provider.
+export async function visionTip({ imageBase64, me, gameTimeSec, role, ctx, lang }) {
+  if (!config.llm.geminiKey) return null;
+  const phase = ctx?.phase || 'mid';
+  const system = COACH_SYSTEM(phase, lang) +
+    ' You are ALSO given a live screenshot of their screen. Read the minimap: where are both ' +
+    'teams, which enemies are MISSING, is the player pushed up with no vision, is an objective ' +
+    'being set up. Prefer advice grounded in what the screenshot shows over generic macro. Max 35 words.';
+  const lines = buildContextLines(me, gameTimeSec, role, ctx);
+  lines.push('Based on the screenshot and this state: what is the single most useful thing to do right now?');
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.llm.geminiModel}:generateContent?key=${config.llm.geminiKey}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{
+        role: 'user',
+        parts: [
+          { inline_data: { mime_type: 'image/jpeg', data: imageBase64 } },
+          { text: lines.join('\n') },
+        ],
+      }],
+      generationConfig: { temperature: 0.6, maxOutputTokens: 700, thinkingConfig: { thinkingBudget: 0 } },
+    }),
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!res.ok) throw new Error(`gemini_vision_${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.map(p => p.text).join('').trim() || null;
 }
 
 // Returns { text, source }. Falls back to a template if the provider fails,
