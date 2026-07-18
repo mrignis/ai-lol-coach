@@ -37,6 +37,7 @@ const clamp = s => Math.max(0, Math.round(s));
 const DRAGON_RESPAWN = 300; // 5:00 after a dragon dies
 const BARON_FIRST = 1200;   // 20:00 first spawn
 const BARON_RESPAWN = 360;  // 6:00 after baron dies
+const SOUL_AT = 4;          // dragons needed for Soul
 
 function lastEventTime(events, name) {
   let t = null;
@@ -44,47 +45,142 @@ function lastEventTime(events, name) {
   return t;
 }
 
+// Laning → mid → late. Advice that helps at 5:00 is noise at 30:00.
+export function gamePhase(gameTime) {
+  if (gameTime < 840) return 'early';   // < 14:00
+  if (gameTime < 1500) return 'mid';    // < 25:00
+  return 'late';
+}
+
+// Structure names encode the OWNING team: T1 = ORDER (blue), T2 = CHAOS (red).
+// A destroyed T1 turret therefore scores for CHAOS.
+const scorerOf = name => (/T1/.test(name || '') ? 'CHAOS' : 'ORDER');
+
+// Read the whole board, not just the player. This is what makes advice
+// situational instead of generic — the LLM and the rules both consume it.
+export function gameContext(data, me) {
+  const gameTime = data.gameData?.gameTime || 0;
+  const players = data.allPlayers || [];
+  const events = data.events?.Events || [];
+  const myTeam = me.team;
+  const teamOf = {};
+  for (const p of players) teamOf[p.riotId || p.summonerName] = p.team;
+
+  const mine = players.filter(p => p.team === myTeam);
+  const foes = players.filter(p => p.team !== myTeam);
+  const sumKills = arr => arr.reduce((a, p) => a + (p.scores?.kills || 0), 0);
+  const avgLevel = arr => (arr.length ? arr.reduce((a, p) => a + (p.level || 0), 0) / arr.length : 0);
+
+  const objectives = { dragons: { ORDER: 0, CHAOS: 0 }, barons: { ORDER: 0, CHAOS: 0 }, turrets: { ORDER: 0, CHAOS: 0 }, inhibs: { ORDER: 0, CHAOS: 0 } };
+  for (const e of events) {
+    if (e.EventName === 'DragonKill' || e.EventName === 'BaronKill') {
+      const t = teamOf[e.KillerName];
+      if (!t) continue;
+      objectives[e.EventName === 'DragonKill' ? 'dragons' : 'barons'][t]++;
+    } else if (e.EventName === 'TurretKilled') {
+      objectives.turrets[scorerOf(e.TurretKilled)]++;
+    } else if (e.EventName === 'InhibKilled') {
+      objectives.inhibs[scorerOf(e.InhibKilled)]++;
+    }
+  }
+  const enemyTeam = myTeam === 'ORDER' ? 'CHAOS' : 'ORDER';
+
+  // The single scariest enemy — worth naming, it changes how you move.
+  const fed = foes.slice().sort((a, b) =>
+    (b.scores.kills * 2 + b.scores.assists) - (a.scores.kills * 2 + a.scores.assists))[0];
+
+  const lastBaron = lastEventTime(events, 'BaronKill');
+  const baronUpIn = lastBaron != null ? lastBaron + BARON_RESPAWN - gameTime : BARON_FIRST - gameTime;
+
+  return {
+    phase: gamePhase(gameTime),
+    myTeam, enemyTeam,
+    teamKills: sumKills(mine),
+    enemyKills: sumKills(foes),
+    myLevel: me.level || 0,
+    enemyAvgLevel: Math.round(avgLevel(foes) * 10) / 10,
+    dragons: { mine: objectives.dragons[myTeam], theirs: objectives.dragons[enemyTeam] },
+    barons: { mine: objectives.barons[myTeam], theirs: objectives.barons[enemyTeam] },
+    turrets: { mine: objectives.turrets[myTeam], theirs: objectives.turrets[enemyTeam] },
+    inhibs: { mine: objectives.inhibs[myTeam], theirs: objectives.inhibs[enemyTeam] },
+    soulTerrain: data.gameData?.mapTerrain || null,
+    baronUpIn: Math.round(baronUpIn),
+    isDead: !!me.isDead,
+    respawnTimer: Math.round(me.respawnTimer || 0),
+    fedEnemy: fed ? { champion: fed.championName, k: fed.scores.kills, d: fed.scores.deaths, a: fed.scores.assists } : null,
+    allies: mine.map(p => ({ champion: p.championName, k: p.scores.kills, d: p.scores.deaths, a: p.scores.assists, lvl: p.level, cs: p.scores.creepScore })),
+    enemies: foes.map(p => ({ champion: p.championName, k: p.scores.kills, d: p.scores.deaths, a: p.scores.assists, lvl: p.level, cs: p.scores.creepScore })),
+  };
+}
+
 // Informational prompts only — max 3, gentlest first.
 // Returns {level, code, params}: the server has no UI language, so the client
 // renders each code through i18n (tNudge) in whatever language is selected.
-export function buildNudges(me, role, gameTime, events, gold, bucket = 'mid') {
+export function buildNudges(me, role, gameTime, events, gold, bucket = 'mid', ctx = null) {
   const min = Math.max(gameTime / 60, 0.5);
   const bench = (BENCHMARKS[role] || BENCHMARKS.MIDDLE)[bucket];
+  const phase = ctx?.phase || gamePhase(gameTime);
   const nudges = [];
 
-  // Player-focused (the product's whole point: coach THIS player).
-  // CS is checked from 3:00 so early-game drift is caught while it's fixable.
-  const csPerMin = me.scores.creepScore / min;
-  if (gameTime > 180 && role !== 'UTILITY' && csPerMin < bench.csPerMin * 0.85) {
-    nudges.push({ level: 'warn', code: 'csPace', params: { cs: csPerMin.toFixed(1), target: bench.csPerMin } });
-  }
-  const visPerMin = (me.scores.wardScore || 0) / min;
-  if (gameTime > 480 && visPerMin < bench.visPerMin * 0.7) {
-    nudges.push({ level: 'warn', code: 'vision' });
-  }
-  if (me.scores.deaths >= 4) {
-    nudges.push({ level: 'warn', code: 'deaths', params: { n: me.scores.deaths } });
-  }
-  if (gold >= 1400) {
-    nudges.push({ level: 'info', code: 'gold', params: { gold } });
-  }
-  // First jungle gank window (~2:30–8:00) — flag it while there's still no vision.
-  if (gameTime > 150 && gameTime < 480 && (me.scores.wardScore || 0) < 2) {
-    nudges.push({ level: 'info', code: 'earlyWard' });
+  // ── highest priority: you are dead ────────────────────────────────
+  // Late death timers decide games — this outranks any farming advice.
+  if (ctx?.isDead && ctx.respawnTimer >= 15) {
+    nudges.push({ level: 'warn', code: 'deathTimer', params: { sec: ctx.respawnTimer } });
   }
 
-  // Objective soft-timers (least patch-fragile: dragon + baron only).
+  // ── game-deciding objectives ──────────────────────────────────────
+  if (ctx) {
+    if (ctx.dragons.theirs === SOUL_AT - 1) {
+      nudges.push({ level: 'warn', code: 'soulPointThem' });
+    } else if (ctx.dragons.mine === SOUL_AT - 1) {
+      nudges.push({ level: 'info', code: 'soulPointUs' });
+    }
+    if (ctx.inhibs.theirs > 0) nudges.push({ level: 'warn', code: 'inhibDown' });
+    if (phase !== 'early' && ctx.fedEnemy && ctx.fedEnemy.k >= 8 && ctx.fedEnemy.k > ctx.fedEnemy.d * 2) {
+      nudges.push({ level: 'warn', code: 'fedEnemy', params: { champ: ctx.fedEnemy.champion, k: ctx.fedEnemy.k, d: ctx.fedEnemy.d } });
+    }
+    if (phase !== 'early' && ctx.myLevel && ctx.enemyAvgLevel - ctx.myLevel >= 2) {
+      nudges.push({ level: 'warn', code: 'behindLevels', params: { n: Math.round(ctx.enemyAvgLevel - ctx.myLevel) } });
+    }
+  }
+
+  // Objective soft-timers.
   const lastDragon = lastEventTime(events, 'DragonKill');
   if (lastDragon != null) {
     const next = lastDragon + DRAGON_RESPAWN - gameTime;
     if (next > 0 && next <= 45) nudges.push({ level: 'info', code: 'dragon', params: { sec: clamp(next) } });
   }
-  const lastBaron = lastEventTime(events, 'BaronKill');
-  const baronNext = lastBaron != null ? lastBaron + BARON_RESPAWN - gameTime : BARON_FIRST - gameTime;
-  if (baronNext > 0 && baronNext <= 45) nudges.push({ level: 'info', code: 'baron', params: { sec: clamp(baronNext) } });
+  const baronNext = ctx ? ctx.baronUpIn : null;
+  if (baronNext != null && baronNext > 0 && baronNext <= 45) {
+    nudges.push({ level: 'info', code: 'baron', params: { sec: clamp(baronNext) } });
+  }
 
-  // Never leave the player staring at an empty widget in the first minutes.
-  if (!nudges.length && gameTime < 300) nudges.push({ level: 'info', code: 'earlyFocus' });
+  // ── phase-appropriate personal play ───────────────────────────────
+  // Farming/vision advice matters in lane; late game it's noise next to
+  // "don't get caught", so it's gated by phase.
+  const csPerMin = me.scores.creepScore / min;
+  if (phase !== 'late' && gameTime > 180 && role !== 'UTILITY' && csPerMin < bench.csPerMin * 0.85) {
+    nudges.push({ level: 'warn', code: 'csPace', params: { cs: csPerMin.toFixed(1), target: bench.csPerMin } });
+  }
+  const visPerMin = (me.scores.wardScore || 0) / min;
+  if (gameTime > 480 && visPerMin < bench.visPerMin * 0.7) {
+    nudges.push({ level: 'warn', code: phase === 'late' ? 'visionLate' : 'vision' });
+  }
+  if (me.scores.deaths >= 4) {
+    nudges.push({ level: 'warn', code: 'deaths', params: { n: me.scores.deaths } });
+  }
+  // Unspent gold hurts more early; late you're expected to carry more.
+  const goldCap = phase === 'early' ? 1400 : phase === 'mid' ? 1800 : 2600;
+  if (gold >= goldCap) nudges.push({ level: 'info', code: 'gold', params: { gold } });
+
+  if (phase === 'early' && gameTime > 150 && (me.scores.wardScore || 0) < 2) {
+    nudges.push({ level: 'info', code: 'earlyWard' });
+  }
+
+  // Phase-appropriate fallback so the widget is never empty or off-topic.
+  if (!nudges.length) {
+    nudges.push({ level: 'info', code: phase === 'late' ? 'lateGroup' : phase === 'mid' ? 'midFocus' : 'earlyFocus' });
+  }
 
   return nudges.slice(0, 3);
 }
@@ -102,11 +198,14 @@ export function buildLiveResponse(data, bucket = 'mid') {
   const gold = Math.round(data.activePlayer?.currentGold || 0);
   const events = data.events?.Events || [];
   const min = Math.max(gameTime / 60, 0.5);
+  const ctx = gameContext(data, { ...me, level: data.activePlayer?.level || me.level || 0 });
 
   return {
     inGame: true,
     ready: true,
     gameTimeSec: Math.round(gameTime),
+    phase: ctx.phase,
+    ctx,
     me: {
       champion: me.championName,
       role,
@@ -119,7 +218,7 @@ export function buildLiveResponse(data, bucket = 'mid') {
       gold,
       level: data.activePlayer?.level || me.level || 0,
     },
-    nudges: buildNudges(me, role, gameTime, events, gold, bucket),
+    nudges: buildNudges(me, role, gameTime, events, gold, bucket, ctx),
   };
 }
 
@@ -133,6 +232,7 @@ export async function liveCoachResponse(bucket = 'mid', lang = 'en') {
     gameTimeSec: base.gameTimeSec,
     role: base.me.role,
     nudges: base.nudges,
+    ctx: base.ctx,
     lang,
   });
   // tip = LLM prose (already in `lang`); code/params = template the client localizes.

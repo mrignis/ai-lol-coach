@@ -94,6 +94,27 @@ async function callGroq({ system, user }) {
   return data.choices?.[0]?.message?.content?.trim();
 }
 
+// Gemini free tier. Note: gemini-flash-latest is the safe pin — some dated
+// aliases 429 immediately on the free tier.
+async function callGemini({ system, user }) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.llm.geminiModel}:generateContent?key=${config.llm.geminiKey}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: 'user', parts: [{ text: user }] }],
+      // thinkingBudget: 0 — flash models reason internally by default, which
+      // burns latency and output tokens we don't need for short coaching text.
+      generationConfig: { temperature: 0.6, maxOutputTokens: 700, thinkingConfig: { thinkingBudget: 0 } },
+    }),
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!res.ok) throw new Error(`gemini_${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.map(p => p.text).join('').trim();
+}
+
 async function callAnthropic({ system, user }) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -119,25 +140,59 @@ async function callAnthropic({ system, user }) {
 async function callLLM(system, user) {
   const p = config.llm.provider;
   const prompt = { system, user };
+  if (p === 'none') return null;
   if (p === 'groq' && config.llm.groqKey) return callGroq(prompt);
+  if (p === 'gemini' && config.llm.geminiKey) return callGemini(prompt);
   if (p === 'anthropic' && config.llm.anthropicKey) return callAnthropic(prompt);
   return callOllama(prompt); // ollama default
 }
 
 // One short, live, actionable recommendation from the current game state.
 // Falls back to the top rule-based nudge if the LLM is unreachable.
-export async function liveTip({ me, gameTimeSec, role, nudges, lang }) {
+const PHASE_BRIEF = {
+  early: 'Laning phase. Advice should be about waves, trades, jungle tracking and the first objectives.',
+  mid: 'Mid game. Advice should be about grouping, picks, vision before objectives and side-wave management.',
+  late: 'LATE GAME. Deaths are near-unpunishable — one bad pick loses Baron and the game. Do NOT give farming or CS advice. Talk about not getting caught, vision before Baron/Elder, waiting for picks, and what to do with the next 90 seconds around objectives.',
+};
+
+export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang }) {
   const min = Math.max(gameTimeSec / 60, 0.5);
   const langName = LANG_NAMES[lang] || 'English';
+  const phase = ctx?.phase || 'mid';
   const system =
-    'You are a League of Legends coach watching a LIVE game. Give ONE concrete, specific ' +
-    'thing to do in the next 90 seconds — macro or safety, never mechanical spam. Max 25 words, ' +
-    'no preamble, speak directly ("you").' + (lang && lang !== 'en' ? ` Reply in natural, grammatically correct ${langName}.` : '');
-  const user =
-    `You are ${me.champion} (${role}), ${Math.round(gameTimeSec / 60)} min in. ` +
-    `KDA ${me.kills}/${me.deaths}/${me.assists}, CS ${me.cs} (${(me.cs / min).toFixed(1)}/min), ` +
-    `vision ${me.wardScore}, gold ${me.gold}, level ${me.level}. ` +
-    `What is the single most useful thing to do right now?`;
+    'You are a sharp League of Legends coach watching a LIVE game. You can see the whole ' +
+    'scoreboard and objective state. Give ONE concrete, specific thing to do in the next 90 ' +
+    'seconds, grounded in the actual game state — reference the real numbers, champions or ' +
+    'objectives you were given. Never give generic filler like "farm safely" or "play well". ' +
+    'Never give mechanical spam. Max 30 words, no preamble, speak directly ("you"). ' +
+    PHASE_BRIEF[phase] +
+    (lang && lang !== 'en' ? ` Reply in natural, grammatically correct ${langName}.` : '');
+
+  // Give the model the whole board — without this it can only generalise.
+  const lines = [
+    `You: ${me.champion} (${role}) lvl ${me.level}, KDA ${me.kills}/${me.deaths}/${me.assists}, ` +
+      `CS ${me.cs} (${(me.cs / min).toFixed(1)}/min), vision ${me.wardScore}, ${me.gold}g unspent.`,
+    `Clock: ${Math.round(gameTimeSec / 60)} min (${phase} game).`,
+  ];
+  if (ctx) {
+    lines.push(`Score: your team ${ctx.teamKills} kills vs enemy ${ctx.enemyKills}.`);
+    lines.push(`Objectives — dragons ${ctx.dragons.mine}:${ctx.dragons.theirs}, barons ${ctx.barons.mine}:${ctx.barons.theirs}, ` +
+      `turrets ${ctx.turrets.mine}:${ctx.turrets.theirs}, inhibs ${ctx.inhibs.mine}:${ctx.inhibs.theirs}.`);
+    if (ctx.dragons.theirs === 3) lines.push('WARNING: enemy is one dragon from Dragon Soul.');
+    if (ctx.dragons.mine === 3) lines.push('Your team is one dragon from Dragon Soul.');
+    if (ctx.baronUpIn <= 60) lines.push(`Baron is up or spawning in ~${Math.max(0, ctx.baronUpIn)}s.`);
+    if (ctx.isDead) lines.push(`YOU ARE DEAD — respawn in ${ctx.respawnTimer}s.`);
+    if (ctx.enemyAvgLevel) lines.push(`Levels: you ${ctx.myLevel} vs enemy average ${ctx.enemyAvgLevel}.`);
+    if (ctx.fedEnemy) lines.push(`Biggest threat: ${ctx.fedEnemy.champion} ${ctx.fedEnemy.k}/${ctx.fedEnemy.d}/${ctx.fedEnemy.a}.`);
+    if (ctx.enemies?.length) {
+      lines.push('Enemy team: ' + ctx.enemies.map(p => `${p.champion} ${p.k}/${p.d}/${p.a} lvl${p.lvl}`).join(', ') + '.');
+    }
+    if (ctx.allies?.length) {
+      lines.push('Your team: ' + ctx.allies.map(p => `${p.champion} ${p.k}/${p.d}/${p.a} lvl${p.lvl}`).join(', ') + '.');
+    }
+  }
+  lines.push('What is the single most useful thing to do right now?');
+  const user = lines.join('\n');
   try {
     const text = await callLLM(system, user);
     if (text) return { tip: text.trim(), source: config.llm.provider };
@@ -158,13 +213,7 @@ export async function coach(ctx) {
   const prompt = buildPrompt(ctx);
   const provider = config.llm.provider;
   try {
-    let text;
-    if (provider === 'ollama') text = await callOllama(prompt);
-    else if (provider === 'groq' && config.llm.groqKey) text = await callGroq(prompt);
-    else if (provider === 'anthropic' && config.llm.anthropicKey) text = await callAnthropic(prompt);
-    else if (provider === 'none') text = null;
-    else text = await callOllama(prompt); // default path
-
+    const text = await callLLM(prompt.system, prompt.user);
     if (text) return { text, source: provider };
   } catch (e) {
     console.warn(`[llm] ${provider} failed, using template fallback:`, e.message);
