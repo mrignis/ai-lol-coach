@@ -14,11 +14,13 @@ cp .env.example .env      # Windows: copy .env.example .env
 Then edit `.env`:
 
 - `RIOT_API_KEY` — get one at https://developer.riotgames.com (dev keys expire every 24h).
-- `LLM_PROVIDER` — `ollama` (default, free), `groq`, `anthropic`, or `none`.
-  - **ollama**: start your local Ollama (`ollama serve`, signed in) — the backend calls
-    `qwen3-coder:480b-cloud` at `localhost:11434`. If it's down, the app still works and
-    generates coaching from a local template.
-  - **groq / anthropic**: paste the matching key.
+- `GROQ_API_KEY` — free at https://console.groq.com (1000 req/day). Primary AI
+  (`openai/gpt-oss-120b`), answers in under a second.
+- `GEMINI_API_KEY` — free at https://aistudio.google.com. Text fallback and the
+  vision provider (in-game screenshot analysis).
+- `LLM_PROVIDER` — `groq` (default), `gemini`, or `none`. The server automatically
+  falls back groq → gemini → localized template, so a capped free tier never
+  silences the coach.
 
 ## Prove the data pipeline (no UI)
 
@@ -63,5 +65,5 @@ Everything the gap engine compares against lives in `BENCHMARKS` in
 ## Deploy later
 
 Backend + static frontend. Deployable to any Node host (Render/Railway/Fly) or adapt the
-API routes to a serverless function. If you deploy, the `ollama` provider won't be
-reachable — switch `LLM_PROVIDER` to `groq` or `anthropic` for the hosted build.
+API routes to a serverless function. Both AI providers (Groq, Gemini) are cloud APIs,
+so the hosted build works unchanged — just set the same env vars.

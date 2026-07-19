@@ -61,23 +61,6 @@ function templateCoach(weaknesses) {
   }).join('\n\n');
 }
 
-async function callOllama({ system, user }) {
-  const res = await fetch(`${config.llm.ollamaUrl}/api/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: config.llm.ollamaModel,
-      messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-      stream: false,
-      options: { temperature: 0.6 },
-    }),
-    signal: AbortSignal.timeout(60000),
-  });
-  if (!res.ok) throw new Error(`ollama_${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const data = await res.json();
-  return data.message?.content?.trim();
-}
-
 async function callGroq({ system, user }) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -97,8 +80,7 @@ async function callGroq({ system, user }) {
   return data.choices?.[0]?.message?.content?.trim();
 }
 
-// Gemini free tier. Note: gemini-flash-latest is the safe pin — some dated
-// aliases 429 immediately on the free tier.
+// Gemini free tier — text fallback and the only vision provider.
 async function callGemini({ system, user }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.llm.geminiModel}:generateContent?key=${config.llm.geminiKey}`;
   const res = await fetch(url, {
@@ -118,41 +100,20 @@ async function callGemini({ system, user }) {
   return data.candidates?.[0]?.content?.parts?.map(p => p.text).join('').trim();
 }
 
-async function callAnthropic({ system, user }) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': config.llm.anthropicKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: config.llm.anthropicModel,
-      max_tokens: 500,
-      system,
-      messages: [{ role: 'user', content: user }],
-    }),
-    signal: AbortSignal.timeout(30000),
-  });
-  if (!res.ok) throw new Error(`anthropic_${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const data = await res.json();
-  return data.content?.[0]?.text?.trim();
-}
-
-// Dispatch a raw prompt to the configured provider (throws on failure).
-// Fallback chain: primary provider first, then every other provider with a
+// Fallback chain: primary provider first, then the other one if it has a
 // key. One capped free tier (e.g. Gemini's daily 429) no longer downgrades
 // the coaching to templates — the next provider picks it up.
-const PROVIDER_CALLS = { groq: callGroq, gemini: callGemini, anthropic: callAnthropic, ollama: callOllama };
+// (Ollama and Anthropic were removed 2026-07-19: the Ollama cloud model was
+// retired and its 60s timeout only delayed the template fallback.)
+const PROVIDER_CALLS = { groq: callGroq, gemini: callGemini };
 
 function providerChain() {
-  const order = [config.llm.provider, 'groq', 'gemini', 'anthropic', 'ollama'];
+  const order = [config.llm.provider, 'groq', 'gemini'];
   const chain = [];
   for (const p of order) {
     if (chain.includes(p) || !PROVIDER_CALLS[p]) continue;
     if (p === 'groq' && !config.llm.groqKey) continue;
     if (p === 'gemini' && !config.llm.geminiKey) continue;
-    if (p === 'anthropic' && !config.llm.anthropicKey) continue;
     chain.push(p);
   }
   return chain;
@@ -341,7 +302,7 @@ export async function visionTip({ imageBase64, minimapBase64, me, gameTimeSec, r
 }
 
 // Returns { text, source }. Falls back to a template if the provider fails,
-// so a down Ollama or missing key never breaks the analysis.
+// so a capped provider or missing key never breaks the analysis.
 export async function coach(ctx) {
   const prompt = buildPrompt(ctx);
   try {

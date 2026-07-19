@@ -5,9 +5,9 @@ export const config = {
   port: Number(process.env.PORT) || 3000,
   riotKey: process.env.RIOT_API_KEY || '',
   llm: {
-    provider: (process.env.LLM_PROVIDER || 'ollama').toLowerCase(),
-    ollamaUrl: process.env.OLLAMA_URL || 'http://localhost:11434',
-    ollamaModel: process.env.OLLAMA_MODEL || 'qwen3-coder:480b-cloud',
+    // groq | gemini | none. Ollama and Anthropic were removed 2026-07-19:
+    // the Ollama cloud model was retired (410) and Anthropic never had a key.
+    provider: (process.env.LLM_PROVIDER || 'groq').toLowerCase(),
     groqKey: process.env.GROQ_API_KEY || '',
     // gpt-oss-120b: smartest text model on Groq's free tier (Kimi K2 and
     // Llama-4 were removed from their catalog, 2026-07).
@@ -19,8 +19,6 @@ export const config = {
     // flash-latest resolves to gemini-3.5-flash (free tier: only 20 req/day) —
     // default to 2.5-flash, which still has a usable free quota.
     geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-    anthropicKey: process.env.ANTHROPIC_API_KEY || '',
-    anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5',
   },
 };
 
