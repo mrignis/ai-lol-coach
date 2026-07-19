@@ -9,10 +9,11 @@ export const config = {
     ollamaUrl: process.env.OLLAMA_URL || 'http://localhost:11434',
     ollamaModel: process.env.OLLAMA_MODEL || 'qwen3-coder:480b-cloud',
     groqKey: process.env.GROQ_API_KEY || '',
-    // Kimi K2 on Groq: one of the smartest open models, free tier, no Ollama.
-    groqModel: process.env.GROQ_MODEL || 'moonshotai/kimi-k2-instruct',
-    // Multimodal model on Groq for screenshot analysis when Gemini is capped.
-    groqVisionModel: process.env.GROQ_VISION_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct',
+    // gpt-oss-120b: smartest text model on Groq's free tier (Kimi K2 and
+    // Llama-4 were removed from their catalog, 2026-07).
+    groqModel: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
+    // Groq currently hosts no multimodal model; empty = skip Groq for vision.
+    groqVisionModel: process.env.GROQ_VISION_MODEL || '',
     // GEMINI_API_KEY is usually already a system env var, so .env can stay empty.
     geminiKey: process.env.GEMINI_API_KEY || '',
     // flash-latest resolves to gemini-3.5-flash (free tier: only 20 req/day) —

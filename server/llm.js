@@ -87,6 +87,8 @@ async function callGroq({ system, user }) {
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
       temperature: 0.6,
       max_tokens: 500,
+      // gpt-oss are reasoning models — low effort keeps latency fit for live tips.
+      ...(config.llm.groqModel.includes('gpt-oss') ? { reasoning_effort: 'low' } : {}),
     }),
     signal: AbortSignal.timeout(30000),
   });
@@ -323,7 +325,7 @@ export async function visionTip({ imageBase64, minimapBase64, me, gameTimeSec, r
   // Same chain idea as text tips: Gemini first, Groq's multimodal Llama-4 next.
   const attempts = [];
   if (config.llm.geminiKey) attempts.push(['gemini', geminiVision]);
-  if (config.llm.groqKey) attempts.push(['groq', groqVision]);
+  if (config.llm.groqKey && config.llm.groqVisionModel) attempts.push(['groq', groqVision]);
   let lastErr = null;
   for (const [name, fn] of attempts) {
     try {
