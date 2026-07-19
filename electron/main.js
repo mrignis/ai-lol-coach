@@ -1,4 +1,5 @@
-import { app, BrowserWindow, globalShortcut, desktopCapturer } from 'electron';
+import { app, BrowserWindow, globalShortcut, desktopCapturer, screen } from 'electron';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import net from 'net';
@@ -33,16 +34,45 @@ async function ensureServer() {
   await waitForPort(PORT);
 }
 
+// ── remember where the user parked the widget (pin feature) ───────────
+const boundsFile = () => path.join(app.getPath('userData'), 'overlay-bounds.json');
+
+function loadBounds() {
+  try {
+    const b = JSON.parse(fs.readFileSync(boundsFile(), 'utf8'));
+    if (![b.x, b.y, b.width, b.height].every(Number.isFinite)) return null;
+    // Clamp to the nearest display so a monitor change can't strand the
+    // widget off-screen where the user could never grab it again.
+    const wa = screen.getDisplayMatching(b).workArea;
+    return {
+      width: Math.min(b.width, wa.width),
+      height: Math.min(b.height, wa.height),
+      x: Math.min(Math.max(b.x, wa.x), wa.x + wa.width - 120),
+      y: Math.min(Math.max(b.y, wa.y), wa.y + wa.height - 80),
+    };
+  } catch { return null; }
+}
+
+let saveTimer = null;
+function saveBounds() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    if (!win || win.isDestroyed()) return;
+    try { fs.writeFileSync(boundsFile(), JSON.stringify(win.getBounds())); } catch { /* best-effort */ }
+  }, 400);
+}
+
 // ── overlay window ────────────────────────────────────────────────────
 let win = null;
 let clickThrough = false;
 
 function createWindow() {
+  const saved = loadBounds();
   win = new BrowserWindow({
-    width: 290,
-    height: 340,
-    x: 24,
-    y: 60,
+    width: saved?.width ?? 290,
+    height: saved?.height ?? 340,
+    x: saved?.x ?? 24,
+    y: saved?.y ?? 60,
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
@@ -58,6 +88,8 @@ function createWindow() {
   // Float above the game (works when League runs Borderless/Windowed).
   win.setAlwaysOnTop(true, 'screen-saver');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  win.on('moved', saveBounds);
+  win.on('resized', saveBounds);
   win.loadURL(OVERLAY_URL);
 
   // When the game window is focused it can jump above ours, so keep

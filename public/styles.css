@@ -206,6 +206,10 @@ body {
 .ov-btn { -webkit-app-region: no-drag; background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 12px; padding: 1px 3px; line-height: 1; }
 .ov-btn:hover { color: var(--gold); }
 #ovClose:hover { color: var(--red); }
+#ovPin { opacity: .4; }
+#ovPin.on { opacity: 1; }
+/* Pinned: the bar is no longer a drag handle — the widget stays put. */
+body.pinned .ov-bar { -webkit-app-region: no-drag; }
 
 .ov-settings {
   -webkit-app-region: no-drag;

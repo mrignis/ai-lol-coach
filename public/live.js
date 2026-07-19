@@ -93,7 +93,7 @@ function renderAiTip() {
 
 // ── Overlay mode (?overlay=1): transparent, compact, user-configurable ──
 const OV_KEY = 'lolcoach_overlay_opts';
-const OV_DEFAULTS = { alpha: 85, scale: 100, stats: true, nudges: true, ai: true };
+const OV_DEFAULTS = { alpha: 85, scale: 100, stats: true, nudges: true, ai: true, pinned: false };
 let ovOpts = (() => {
   try { return { ...OV_DEFAULTS, ...JSON.parse(localStorage.getItem(OV_KEY) || '{}') }; }
   catch { return { ...OV_DEFAULTS }; }
@@ -105,6 +105,10 @@ function applyOpts() {
   $('cardStats').hidden = !ovOpts.stats;
   $('cardNudges').hidden = !ovOpts.nudges;
   $('cardAi').hidden = !ovOpts.ai;
+  // Pinned = the title bar stops being a drag region, so the widget can't be
+  // moved by a stray mid-game click. Position itself persists on the Electron side.
+  document.body.classList.toggle('pinned', !!ovOpts.pinned);
+  $('ovPin').classList.toggle('on', !!ovOpts.pinned);
   localStorage.setItem(OV_KEY, JSON.stringify(ovOpts));
 }
 
@@ -113,6 +117,7 @@ if (new URLSearchParams(location.search).get('overlay') === '1') {
   $('ovBar').hidden = false;
   $('ovClose').addEventListener('click', () => window.close());
   $('ovGear').addEventListener('click', () => { $('ovSettings').hidden = !$('ovSettings').hidden; });
+  $('ovPin').addEventListener('click', () => { ovOpts.pinned = !ovOpts.pinned; applyOpts(); });
 
   // Reuse the existing controls: dot goes to the title bar, rank picker into settings.
   $('ovDotSlot').appendChild($('dot'));
