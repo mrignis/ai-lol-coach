@@ -9,7 +9,13 @@ export const config = {
     ollamaUrl: process.env.OLLAMA_URL || 'http://localhost:11434',
     ollamaModel: process.env.OLLAMA_MODEL || 'qwen3-coder:480b-cloud',
     groqKey: process.env.GROQ_API_KEY || '',
-    groqModel: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+    // Kimi K2 on Groq: one of the smartest open models, free tier, no Ollama.
+    groqModel: process.env.GROQ_MODEL || 'moonshotai/kimi-k2-instruct',
+    // Multimodal model on Groq for screenshot analysis when Gemini is capped.
+    groqVisionModel: process.env.GROQ_VISION_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct',
+    // GEMINI_API_KEY is usually already a system env var, so .env can stay empty.
+    geminiKey: process.env.GEMINI_API_KEY || '',
+    geminiModel: process.env.GEMINI_MODEL || 'gemini-flash-latest',
     anthropicKey: process.env.ANTHROPIC_API_KEY || '',
     anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5',
   },

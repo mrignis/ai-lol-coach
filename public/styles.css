@@ -190,6 +190,9 @@ body {
 /* AI recommendation card */
 .ai-card h3 { margin: 0 0 8px; font-size: 15px; color: var(--gold-soft); }
 .ai-tip { font-size: 14px; line-height: 1.5; color: var(--text); }
+.ai-item { padding: 3px 0; }
+.ai-item.ai-old { opacity: .5; font-size: .92em; border-top: 1px solid var(--line); }
+.ai-at { color: var(--muted); font-size: .85em; margin-right: 6px; font-variant-numeric: tabular-nums; }
 
 /* ── Electron overlay mode (?overlay=1) ── */
 /* --ov-alpha (panel opacity) is driven by the in-overlay settings slider. */

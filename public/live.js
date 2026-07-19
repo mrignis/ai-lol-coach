@@ -74,11 +74,21 @@ async function loadAiTip() {
   } catch { /* best-effort */ }
 }
 
+// Keep a short history — one line at a time felt like "too few tips".
+let aiHistory = [];
+
 function renderAiTip() {
   if (!lastAi) return;
   // `tip` is LLM prose (already written in the chosen language); when the LLM is
   // offline the server sends a `code` instead, which we localize here.
-  $('aiTip').textContent = lastAi.tip || tNudge(lastAi.code, lastAi.params);
+  const text = lastAi.tip || tNudge(lastAi.code, lastAi.params);
+  if (!aiHistory.length || aiHistory[0].text !== text) {
+    aiHistory.unshift({ text, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+    aiHistory = aiHistory.slice(0, 3);
+  }
+  $('aiTip').innerHTML = aiHistory.map((h, i) =>
+    `<div class="ai-item${i ? ' ai-old' : ''}"><span class="ai-at">${h.at}</span>${escapeHtml(h.text)}</div>`
+  ).join('');
 }
 
 // ── Overlay mode (?overlay=1): transparent, compact, user-configurable ──
@@ -137,4 +147,4 @@ document.addEventListener('langchange', () => {
 poll();
 setInterval(poll, 5000);
 loadAiTip();
-setInterval(loadAiTip, 60000);
+setInterval(loadAiTip, 30000); // twice a minute — fresh vision tips get picked up fast

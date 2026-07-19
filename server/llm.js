@@ -138,14 +138,40 @@ async function callAnthropic({ system, user }) {
 }
 
 // Dispatch a raw prompt to the configured provider (throws on failure).
+// Fallback chain: primary provider first, then every other provider with a
+// key. One capped free tier (e.g. Gemini's daily 429) no longer downgrades
+// the coaching to templates — the next provider picks it up.
+const PROVIDER_CALLS = { groq: callGroq, gemini: callGemini, anthropic: callAnthropic, ollama: callOllama };
+
+function providerChain() {
+  const order = [config.llm.provider, 'groq', 'gemini', 'anthropic', 'ollama'];
+  const chain = [];
+  for (const p of order) {
+    if (chain.includes(p) || !PROVIDER_CALLS[p]) continue;
+    if (p === 'groq' && !config.llm.groqKey) continue;
+    if (p === 'gemini' && !config.llm.geminiKey) continue;
+    if (p === 'anthropic' && !config.llm.anthropicKey) continue;
+    chain.push(p);
+  }
+  return chain;
+}
+
+// Returns { text, provider } or null (provider 'none' / all failed → throws last error).
 async function callLLM(system, user) {
-  const p = config.llm.provider;
+  if (config.llm.provider === 'none') return null;
   const prompt = { system, user };
-  if (p === 'none') return null;
-  if (p === 'groq' && config.llm.groqKey) return callGroq(prompt);
-  if (p === 'gemini' && config.llm.geminiKey) return callGemini(prompt);
-  if (p === 'anthropic' && config.llm.anthropicKey) return callAnthropic(prompt);
-  return callOllama(prompt); // ollama default
+  let lastErr = null;
+  for (const p of providerChain()) {
+    try {
+      const text = await PROVIDER_CALLS[p](prompt);
+      if (text) return { text, provider: p };
+    } catch (e) {
+      lastErr = e;
+      console.warn(`[llm] ${p} failed (${String(e.message).slice(0, 90)}) — trying next provider`);
+    }
+  }
+  if (lastErr) throw lastErr;
+  return null;
 }
 
 // One short, live, actionable recommendation from the current game state.
@@ -207,10 +233,11 @@ function buildContextLines(me, gameTimeSec, role, ctx) {
 const COACH_SYSTEM = (phase, lang, role) => {
   const langName = LANG_NAMES[lang] || 'English';
   return 'You are a sharp League of Legends coach watching a LIVE game. You can see the whole ' +
-    'scoreboard and objective state. Give ONE concrete, specific thing to do in the next 90 ' +
-    'seconds, grounded in the actual game state — reference the real numbers, champions or ' +
-    'objectives you were given. Never give generic filler like "farm safely" or "play well". ' +
-    'Never give mechanical spam. Max 30 words, no preamble, speak directly ("you"). ' +
+    'scoreboard and objective state. Give ONE or TWO concrete actions for the next 90 seconds, ' +
+    'grounded in the actual game state — every tip MUST reference at least one concrete detail ' +
+    'you were given (a champion name, a number, a timer, an objective). Never give generic ' +
+    'filler like "farm safely" or "play well". Never give mechanical spam. Max 45 words total, ' +
+    'no preamble, speak directly ("you"). ' +
     PHASE_BRIEF[phase] + ' ' + (ROLE_BRIEF[role] || '') +
     (lang && lang !== 'en' ? ` Reply in natural, grammatically correct ${langName}.` : '');
 };
@@ -222,8 +249,8 @@ export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang }) {
   lines.push('What is the single most useful thing to do right now?');
   const user = lines.join('\n');
   try {
-    const text = await callLLM(system, user);
-    if (text) return { tip: text.trim(), source: config.llm.provider };
+    const r = await callLLM(system, user);
+    if (r?.text) return { tip: r.text.trim(), source: r.provider };
   } catch (e) {
     console.warn('[llm] liveTip failed:', e.message);
   }
@@ -239,23 +266,10 @@ export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang }) {
 // screen (minimap, team positions, health bars, fog) on top of the structured
 // game state. Passive screen-reading only — the "coach over your shoulder"
 // model, no automation. Gemini-only: it's our multimodal-capable provider.
-export async function visionTip({ imageBase64, minimapBase64, me, gameTimeSec, role, ctx, lang }) {
-  if (!config.llm.geminiKey) return null;
-  const phase = ctx?.phase || 'mid';
-  const system = COACH_SYSTEM(phase, lang, role) +
-    ' You are ALSO given a live screenshot of their screen' +
-    (minimapBase64 ? ' AND a zoomed-in crop of the minimap' : '') +
-    '. READ THE MINIMAP FIRST: where are both teams, which enemies are MISSING from it, is the ' +
-    'player pushed up with no vision, is an objective being set up. If enemies are missing or the ' +
-    'player is in a dangerous spot, your tip MUST say so. Prefer what the screen shows over ' +
-    'generic macro. Max 35 words.';
-  const lines = buildContextLines(me, gameTimeSec, role, ctx);
-  lines.push('Based on the screenshot and this state: what is the single most useful thing to do right now?');
-
+async function geminiVision({ system, user, imageBase64, minimapBase64 }) {
   const parts = [{ inline_data: { mime_type: 'image/jpeg', data: imageBase64 } }];
   if (minimapBase64) parts.push({ inline_data: { mime_type: 'image/jpeg', data: minimapBase64 } });
-  parts.push({ text: lines.join('\n') });
-
+  parts.push({ text: user });
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.llm.geminiModel}:generateContent?key=${config.llm.geminiKey}`;
   const res = await fetch(url, {
     method: 'POST',
@@ -272,16 +286,67 @@ export async function visionTip({ imageBase64, minimapBase64, me, gameTimeSec, r
   return data.candidates?.[0]?.content?.parts?.map(p => p.text).join('').trim() || null;
 }
 
+// Groq's Llama-4 models take images via OpenAI-style image_url data URLs.
+async function groqVision({ system, user, imageBase64, minimapBase64 }) {
+  const content = [{ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }];
+  if (minimapBase64) content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${minimapBase64}` } });
+  content.push({ type: 'text', text: user });
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.llm.groqKey}` },
+    body: JSON.stringify({
+      model: config.llm.groqVisionModel,
+      messages: [{ role: 'system', content: system }, { role: 'user', content }],
+      temperature: 0.6,
+      max_tokens: 300,
+    }),
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!res.ok) throw new Error(`groq_vision_${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() || null;
+}
+
+export async function visionTip({ imageBase64, minimapBase64, me, gameTimeSec, role, ctx, lang }) {
+  const phase = ctx?.phase || 'mid';
+  const system = COACH_SYSTEM(phase, lang, role) +
+    ' You are ALSO given a live screenshot of their screen' +
+    (minimapBase64 ? ' AND a zoomed-in crop of the minimap' : '') +
+    '. READ THE MINIMAP FIRST: where are both teams, which enemies are MISSING from it, is the ' +
+    'player pushed up with no vision, is an objective being set up. If enemies are missing or the ' +
+    'player is in a dangerous spot, your tip MUST say so. Prefer what the screen shows over ' +
+    'generic macro. Max 50 words.';
+  const lines = buildContextLines(me, gameTimeSec, role, ctx);
+  lines.push('Based on the screenshot and this state: what should the player do right now?');
+  const args = { system, user: lines.join('\n'), imageBase64, minimapBase64 };
+
+  // Same chain idea as text tips: Gemini first, Groq's multimodal Llama-4 next.
+  const attempts = [];
+  if (config.llm.geminiKey) attempts.push(['gemini', geminiVision]);
+  if (config.llm.groqKey) attempts.push(['groq', groqVision]);
+  let lastErr = null;
+  for (const [name, fn] of attempts) {
+    try {
+      const text = await fn(args);
+      if (text) return text;
+    } catch (e) {
+      lastErr = e;
+      console.warn(`[llm] vision ${name} failed (${String(e.message).slice(0, 90)}) — trying next`);
+    }
+  }
+  if (lastErr) throw lastErr;
+  return null;
+}
+
 // Returns { text, source }. Falls back to a template if the provider fails,
 // so a down Ollama or missing key never breaks the analysis.
 export async function coach(ctx) {
   const prompt = buildPrompt(ctx);
-  const provider = config.llm.provider;
   try {
-    const text = await callLLM(prompt.system, prompt.user);
-    if (text) return { text, source: provider };
+    const r = await callLLM(prompt.system, prompt.user);
+    if (r?.text) return { text: r.text, source: r.provider };
   } catch (e) {
-    console.warn(`[llm] ${provider} failed, using template fallback:`, e.message);
+    console.warn('[llm] all providers failed, using template fallback:', e.message);
   }
   return { text: templateCoach(ctx.weaknesses), source: 'template' };
 }
