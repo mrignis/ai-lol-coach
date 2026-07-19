@@ -73,6 +73,7 @@ app.get('/api/live', async (req, res) => {
 // Latest screen-based tip. The Electron overlay posts a screenshot every ~60s;
 // we analyse it eagerly and the widget picks the result up on its next poll.
 let visionState = { tip: null, ts: 0 };
+let textTipState = { data: null, ts: 0, lang: 'en' };
 let lastCoachLang = 'en'; // vision calls happen out-of-band, so remember the UI language
 
 app.get('/api/live-coach', async (req, res) => {
@@ -81,9 +82,16 @@ app.get('/api/live-coach', async (req, res) => {
   try {
     // A fresh vision tip (screen + state) beats a state-only tip.
     if (visionState.tip && Date.now() - visionState.ts < 90000) {
-      return res.json({ inGame: true, ready: true, tip: visionState.tip, source: 'gemini-vision' });
+      return res.json({ inGame: true, ready: true, tip: visionState.tip, source: 'vision' });
     }
-    res.json(await liveCoachResponse(bucket, req.query.lang || 'en'));
+    // Text tips cost an LLM call each — cache 45s so the 30s widget poll
+    // doesn't double our daily quota burn (free tiers are small).
+    if (textTipState.data && Date.now() - textTipState.ts < 45000 && textTipState.lang === (req.query.lang || 'en')) {
+      return res.json(textTipState.data);
+    }
+    const out = await liveCoachResponse(bucket, req.query.lang || 'en');
+    if (out.ready && out.tip) textTipState = { data: out, ts: Date.now(), lang: req.query.lang || 'en' };
+    res.json(out);
   } catch (e) {
     if (e.code === 'NOGAME') return res.json({ inGame: false });
     console.error('[live-coach]', e.message);

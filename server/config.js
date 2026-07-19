@@ -15,7 +15,9 @@ export const config = {
     groqVisionModel: process.env.GROQ_VISION_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct',
     // GEMINI_API_KEY is usually already a system env var, so .env can stay empty.
     geminiKey: process.env.GEMINI_API_KEY || '',
-    geminiModel: process.env.GEMINI_MODEL || 'gemini-flash-latest',
+    // flash-latest resolves to gemini-3.5-flash (free tier: only 20 req/day) —
+    // default to 2.5-flash, which still has a usable free quota.
+    geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
     anthropicKey: process.env.ANTHROPIC_API_KEY || '',
     anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5',
   },
