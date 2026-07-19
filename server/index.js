@@ -93,7 +93,7 @@ app.get('/api/live-coach', async (req, res) => {
 
 // Electron posts { image: <base64 jpeg> } here while a game is running.
 app.post('/api/vision', async (req, res) => {
-  const { image, bucket } = req.body || {};
+  const { image, minimap, bucket } = req.body || {};
   if (!image) return res.status(400).json({ error: 'image required' });
   try {
     const data = await fetchLiveData();
@@ -101,6 +101,7 @@ app.post('/api/vision', async (req, res) => {
     if (!base.ready) return res.json({ ok: false });
     const tip = await visionTip({
       imageBase64: image,
+      minimapBase64: minimap || null,
       me: base.me,
       gameTimeSec: base.gameTimeSec,
       role: base.me.role,

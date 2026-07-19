@@ -35,6 +35,7 @@ function buildPrompt({ rank, role, bucket, roleMixed, weaknesses, lang }) {
 
   const user =
     `This player is ${rankStr}, playing mostly ${role}.\n` +
+    (ROLE_BRIEF[role] ? ROLE_BRIEF[role] + '\n' : '') +
     `Their 3 biggest personal weaknesses vs players at their level:\n` +
     weaknesses.map(gapLine).join('\n') + mixNote +
     `\n\nWrite their "3 things to fix" now.`;
@@ -149,6 +150,15 @@ async function callLLM(system, user) {
 
 // One short, live, actionable recommendation from the current game state.
 // Falls back to the top rule-based nudge if the LLM is unreachable.
+// Role changes what good advice even IS — a support must never hear "farm more".
+const ROLE_BRIEF = {
+  UTILITY: 'The player is the SUPPORT. NEVER advise farming minions or CS. Talk about: vision control and denying enemy wards, roaming to mid/jungle after shoving, peeling for the ADC in fights, engage/disengage timing, warding objectives 30-60s before they spawn, and staying alive (a dead support gives the enemy free vision control).',
+  JUNGLE: 'The player is the JUNGLER. Talk about: pathing toward winnable lanes, securing/trading objectives, ganking lanes that have CC and priority, counter-jungling when the enemy jungler shows elsewhere, and tracking the enemy jungler for your laners.',
+  BOTTOM: 'The player is the ADC. Talk about: positioning in fights (hit the nearest safe target, never front-line), catching side waves only when safe, staying attached to the support, and never face-checking bushes.',
+  MIDDLE: 'The player is the MID LANER. Talk about: shoving the wave before roaming, roam timings to side lanes or objectives, and tracking the enemy jungler before stepping up.',
+  TOP: 'The player is the TOP LANER. Talk about: wave management (freeze vs shove), Teleport plays to bot/objectives, and split-push timing versus grouping with the team.',
+};
+
 const PHASE_BRIEF = {
   early: 'Laning phase. Advice should be about waves, trades, jungle tracking and the first objectives.',
   mid: 'Mid game. Advice should be about grouping, picks, vision before objectives and side-wave management.',
@@ -194,20 +204,20 @@ function buildContextLines(me, gameTimeSec, role, ctx) {
   return lines;
 }
 
-const COACH_SYSTEM = (phase, lang) => {
+const COACH_SYSTEM = (phase, lang, role) => {
   const langName = LANG_NAMES[lang] || 'English';
   return 'You are a sharp League of Legends coach watching a LIVE game. You can see the whole ' +
     'scoreboard and objective state. Give ONE concrete, specific thing to do in the next 90 ' +
     'seconds, grounded in the actual game state — reference the real numbers, champions or ' +
     'objectives you were given. Never give generic filler like "farm safely" or "play well". ' +
     'Never give mechanical spam. Max 30 words, no preamble, speak directly ("you"). ' +
-    PHASE_BRIEF[phase] +
+    PHASE_BRIEF[phase] + ' ' + (ROLE_BRIEF[role] || '') +
     (lang && lang !== 'en' ? ` Reply in natural, grammatically correct ${langName}.` : '');
 };
 
 export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang }) {
   const phase = ctx?.phase || 'mid';
-  const system = COACH_SYSTEM(phase, lang);
+  const system = COACH_SYSTEM(phase, lang, role);
   const lines = buildContextLines(me, gameTimeSec, role, ctx);
   lines.push('What is the single most useful thing to do right now?');
   const user = lines.join('\n');
@@ -229,15 +239,22 @@ export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang }) {
 // screen (minimap, team positions, health bars, fog) on top of the structured
 // game state. Passive screen-reading only — the "coach over your shoulder"
 // model, no automation. Gemini-only: it's our multimodal-capable provider.
-export async function visionTip({ imageBase64, me, gameTimeSec, role, ctx, lang }) {
+export async function visionTip({ imageBase64, minimapBase64, me, gameTimeSec, role, ctx, lang }) {
   if (!config.llm.geminiKey) return null;
   const phase = ctx?.phase || 'mid';
-  const system = COACH_SYSTEM(phase, lang) +
-    ' You are ALSO given a live screenshot of their screen. Read the minimap: where are both ' +
-    'teams, which enemies are MISSING, is the player pushed up with no vision, is an objective ' +
-    'being set up. Prefer advice grounded in what the screenshot shows over generic macro. Max 35 words.';
+  const system = COACH_SYSTEM(phase, lang, role) +
+    ' You are ALSO given a live screenshot of their screen' +
+    (minimapBase64 ? ' AND a zoomed-in crop of the minimap' : '') +
+    '. READ THE MINIMAP FIRST: where are both teams, which enemies are MISSING from it, is the ' +
+    'player pushed up with no vision, is an objective being set up. If enemies are missing or the ' +
+    'player is in a dangerous spot, your tip MUST say so. Prefer what the screen shows over ' +
+    'generic macro. Max 35 words.';
   const lines = buildContextLines(me, gameTimeSec, role, ctx);
   lines.push('Based on the screenshot and this state: what is the single most useful thing to do right now?');
+
+  const parts = [{ inline_data: { mime_type: 'image/jpeg', data: imageBase64 } }];
+  if (minimapBase64) parts.push({ inline_data: { mime_type: 'image/jpeg', data: minimapBase64 } });
+  parts.push({ text: lines.join('\n') });
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.llm.geminiModel}:generateContent?key=${config.llm.geminiKey}`;
   const res = await fetch(url, {
@@ -245,13 +262,7 @@ export async function visionTip({ imageBase64, me, gameTimeSec, role, ctx, lang 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
-      contents: [{
-        role: 'user',
-        parts: [
-          { inline_data: { mime_type: 'image/jpeg', data: imageBase64 } },
-          { text: lines.join('\n') },
-        ],
-      }],
+      contents: [{ role: 'user', parts }],
       generationConfig: { temperature: 0.6, maxOutputTokens: 700, thinkingConfig: { thinkingBudget: 0 } },
     }),
     signal: AbortSignal.timeout(20000),

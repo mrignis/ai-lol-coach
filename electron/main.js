@@ -81,16 +81,30 @@ async function visionLoop() {
     if (!win || win.isDestroyed() || !win.isVisible()) return;
     const live = await (await fetch(`http://localhost:${PORT}/api/live`)).json();
     if (!live.inGame || !live.ready) return;
+    // Capture at higher res so the minimap crop keeps readable detail.
     const sources = await desktopCapturer.getSources({
       types: ['screen'],
-      thumbnailSize: { width: 1280, height: 800 },
+      thumbnailSize: { width: 1920, height: 1200 },
     });
     const shot = sources[0]?.thumbnail;
     if (!shot || shot.isEmpty()) return;
+    // Minimap lives in the bottom-right corner (default HUD). Send it as a
+    // second zoomed image — in the full frame it's too small for the model.
+    const { width, height } = shot.getSize();
+    const minimap = shot.crop({
+      x: Math.round(width * 0.72),
+      y: Math.round(height * 0.60),
+      width: Math.round(width * 0.28),
+      height: Math.round(height * 0.40),
+    });
+    const resized = shot.resize({ width: 1280 });
     await fetch(`http://localhost:${PORT}/api/vision`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: shot.toJPEG(60).toString('base64') }),
+      body: JSON.stringify({
+        image: resized.toJPEG(55).toString('base64'),
+        minimap: minimap.toJPEG(75).toString('base64'),
+      }),
     });
   } catch { /* vision is best-effort; the text-only tip still works */ }
 }
