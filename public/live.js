@@ -46,13 +46,37 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 }
 
+// Matchup briefing — fetched once per game (server caches per patch anyway).
+let matchupLoadedFor = null;
+async function loadMatchup() {
+  try {
+    const d = await (await fetch(`/api/matchup?lang=${getLang()}`)).json();
+    if (d.ready && d.brief) {
+      $('matchupVs').textContent = d.vs ? `${d.champ} vs ${d.vs}` : d.champ;
+      $('matchupBody').textContent = d.brief;
+      $('cardMatchup').hidden = false;
+    }
+  } catch { /* best-effort */ }
+}
+
 async function poll() {
   try {
     const d = await (await fetch(`/api/live?bucket=${bucket}&lang=${getLang()}`)).json();
     $('dot').className = 'dot on';
-    if (!d.inGame) { lastLive = null; return showWaiting(t('waiting')); }
+    if (!d.inGame) {
+      lastLive = null;
+      matchupLoadedFor = null;
+      $('cardMatchup').hidden = true;
+      return showWaiting(t('waiting'));
+    }
     if (!d.ready) { lastLive = null; return showWaiting(t('detected')); }
     render(d);
+    // First ready poll of a new game → pull the briefing for this champion.
+    const gameKey = d.me.champion + ':' + getLang();
+    if (matchupLoadedFor !== gameKey) {
+      matchupLoadedFor = gameKey;
+      loadMatchup();
+    }
   } catch {
     $('dot').className = 'dot off';
     lastLive = null;

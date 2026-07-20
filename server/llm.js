@@ -19,7 +19,7 @@ const LANG_NAMES = {
   ko: 'Korean', zh: 'Simplified Chinese', ja: 'Japanese', vi: 'Vietnamese',
 };
 
-function buildPrompt({ rank, role, bucket, roleMixed, weaknesses, lang }) {
+function buildPrompt({ rank, role, bucket, roleMixed, weaknesses, lang, progress }) {
   const langName = LANG_NAMES[lang] || 'English';
   const system =
     'You are a friendly, direct League of Legends coach. You know THIS player from their ' +
@@ -33,11 +33,21 @@ function buildPrompt({ rank, role, bucket, roleMixed, weaknesses, lang }) {
     ? '\nNote: they play multiple roles, so numbers are blended across roles — acknowledge this if relevant.'
     : '';
 
+  // Trends vs their own previous sessions — the coach should react to them
+  // (praise real improvement once, focus the fixes on what is NOT moving).
+  let progressNote = '';
+  if (progress && progress.length) {
+    const fmtT = t => `${t.key}: ${t.from.toFixed(2)} → ${t.to.toFixed(2)} (${t.better ? 'improving' : 'getting worse'})`;
+    progressNote =
+      '\nProgress vs their recent sessions:\n' + progress.map(fmtT).join('\n') +
+      '\nOpen with ONE short sentence acknowledging the biggest improvement (if any), then focus the 3 fixes on what is stagnant or getting worse.';
+  }
+
   const user =
     `This player is ${rankStr}, playing mostly ${role}.\n` +
     (ROLE_BRIEF[role] ? ROLE_BRIEF[role] + '\n' : '') +
     `Their 3 biggest personal weaknesses vs players at their level:\n` +
-    weaknesses.map(gapLine).join('\n') + mixNote +
+    weaknesses.map(gapLine).join('\n') + mixNote + progressNote +
     `\n\nWrite their "3 things to fix" now.`;
 
   return { system, user };
@@ -78,6 +88,43 @@ async function callGroq({ system, user }) {
   if (!res.ok) throw new Error(`groq_${res.status}: ${(await res.text()).slice(0, 200)}`);
   const data = await res.json();
   return data.choices?.[0]?.message?.content?.trim();
+}
+
+// Gemini with Google Search grounding — used for meta/guide lookups so the
+// bot can cite CURRENT-patch builds instead of stale training data.
+async function callGeminiGrounded({ system, user }) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.llm.geminiModel}:generateContent?key=${config.llm.geminiKey}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: 'user', parts: [{ text: user }] }],
+      tools: [{ google_search: {} }],
+      // thinkingBudget 0: otherwise 2.5-flash spends the token budget on
+      // internal reasoning and the visible brief arrives truncated.
+      generationConfig: { temperature: 0.4, maxOutputTokens: 1200, thinkingConfig: { thinkingBudget: 0 } },
+    }),
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!res.ok) throw new Error(`gemini_search_${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.map(p => p.text).join('').trim();
+}
+
+// Web-grounded answer with graceful degradation: search-backed Gemini first,
+// plain chain second (still useful — just without live-patch freshness).
+export async function groundedAnswer({ system, user }) {
+  if (config.llm.geminiKey) {
+    try {
+      const text = await callGeminiGrounded({ system, user });
+      if (text) return { text, source: 'gemini-search' };
+    } catch (e) {
+      console.warn('[llm] grounded search failed, falling back to plain LLM:', String(e.message).slice(0, 90));
+    }
+  }
+  const r = await callLLM(system, user);
+  return r ? { text: r.text, source: r.provider } : { text: null, source: 'none' };
 }
 
 // Gemini free tier — text fallback and the only vision provider.

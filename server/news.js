@@ -7,7 +7,7 @@ import * as cache from './cache.js';
 // Cached ~1h so we don't hammer either source.
 const TTL = 60 * 60 * 1000;
 
-async function currentPatch() {
+export async function currentPatch() {
   const versions = await (await fetch('https://ddragon.leagueoflegends.com/api/versions.json')).json();
   return versions[0];
 }

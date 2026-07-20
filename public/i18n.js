@@ -339,6 +339,30 @@ const SET_STR = {
 };
 for (const l in SET_STR) Object.assign(LANGS[l], SET_STR[l]);
 
+// Pre-game matchup briefing card.
+const MATCHUP_STR = {
+  en: { matchupTitle: 'Matchup brief' }, uk: { matchupTitle: 'Матчап-брифінг' },
+  fr: { matchupTitle: 'Brief de matchup' }, de: { matchupTitle: 'Matchup-Briefing' },
+  es: { matchupTitle: 'Guía del matchup' }, pl: { matchupTitle: 'Brief matchupu' },
+  pt: { matchupTitle: 'Guia do confronto' }, ru: { matchupTitle: 'Матчап-брифинг' },
+  tr: { matchupTitle: 'Eşleşme özeti' }, ko: { matchupTitle: '매치업 브리핑' },
+  zh: { matchupTitle: '对线简报' }, ja: { matchupTitle: 'マッチアップ要約' },
+  vi: { matchupTitle: 'Tóm tắt đối đầu' },
+};
+for (const l in MATCHUP_STR) Object.assign(LANGS[l], MATCHUP_STR[l]);
+
+// Progress-over-time section on the results page.
+const PROGRESS_STR = {
+  en: { progressTitle: 'Progress vs your recent sessions' }, uk: { progressTitle: 'Прогрес відносно минулих сесій' },
+  fr: { progressTitle: 'Progression vs tes sessions récentes' }, de: { progressTitle: 'Fortschritt ggü. letzten Sessions' },
+  es: { progressTitle: 'Progreso vs tus sesiones recientes' }, pl: { progressTitle: 'Postęp względem ostatnich sesji' },
+  pt: { progressTitle: 'Progresso vs suas sessões recentes' }, ru: { progressTitle: 'Прогресс относительно прошлых сессий' },
+  tr: { progressTitle: 'Son oturumlarına göre ilerleme' }, ko: { progressTitle: '최근 세션 대비 발전' },
+  zh: { progressTitle: '相比近期对局的进步' }, ja: { progressTitle: '最近のセッションとの比較' },
+  vi: { progressTitle: 'Tiến bộ so với các phiên gần đây' },
+};
+for (const l in PROGRESS_STR) Object.assign(LANGS[l], PROGRESS_STR[l]);
+
 // AI live-recommendation strings.
 const AI_STR = {
   en: { aiTitle: 'AI recommendation', aiWait: 'reading the game…' },

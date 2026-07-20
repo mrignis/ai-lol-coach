@@ -67,6 +67,19 @@ function render(data) {
   $('mainChamps').innerHTML = s.mainChamps.map(c =>
     `<div class="champ"><b>${c.champion}</b><span class="cwr">${c.games}g · ${pct(c.wins / c.games)}</span></div>`
   ).join('');
+  // Progress vs the player's own previous sessions (needs 2+ analyses).
+  if (data.progress && data.progress.length) {
+    $('progressBox').hidden = false;
+    $('progressChips').innerHTML = data.progress.map(p => {
+      const arrow = p.better ? '↑' : '↓';
+      const color = p.better ? 'var(--green)' : 'var(--red)';
+      return `<div class="champ"><b>${tMetric(p.key)}</b><span class="cwr">` +
+        `${fmtMetric(p.key, p.from)} → <span style="color:${color}">${fmtMetric(p.key, p.to)} ${arrow}</span></span></div>`;
+    }).join('');
+  } else {
+    $('progressBox').hidden = true;
+  }
+
   if (s.roleMixed) {
     $('roleNote').hidden = false;
     $('roleNote').textContent = t('roleMixed');

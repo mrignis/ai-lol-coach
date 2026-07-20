@@ -1,6 +1,7 @@
 import { getAccount, getRank, getMatchIds, getMatches, extractParticipant } from './riot.js';
 import { aggregate, rankGaps, topWeaknesses, tierBucket, mainRole } from './engine.js';
 import { coach } from './llm.js';
+import { loadAnalyses, appendAnalysis, computeTrends } from './history.js';
 
 // Parse "gameName#tagLine" (tag optional-ish; default region tag hint not applied).
 export function parseRiotId(raw) {
@@ -52,7 +53,25 @@ export async function analyzePlayer(riotId, platform, { onProgress, lang } = {})
   }
   const mainChamps = Object.values(champCounts).sort((a, b) => b.games - a.games).slice(0, 3);
 
-  const coaching = await coach({ rank, role, bucket, roleMixed, weaknesses, lang });
+  // Progress memory: trends vs the player's own previous sessions.
+  const playerId = `${platform}_${(account.gameName || gameName)}#${(account.tagLine || tagLine)}`;
+  const metricsPlain = {
+    csPerMin: metrics.csPerMin, visPerMin: metrics.visPerMin, kp: metrics.kp,
+    deaths: metrics.deaths, goldPerMin: metrics.goldPerMin, dmgPerMin: metrics.dmgPerMin,
+  };
+  const history = await loadAnalyses(playerId);
+  const progress = computeTrends(history, metricsPlain);
+
+  const coaching = await coach({ rank, role, bucket, roleMixed, weaknesses, lang, progress });
+
+  await appendAnalysis(playerId, {
+    date: new Date().toISOString(),
+    rank: rank ? `${rank.tier} ${rank.rank}` : null,
+    winRate: played.length ? wins / played.length : 0,
+    mainRole: role,
+    metrics: metricsPlain,
+    weaknesses: weaknesses.map(w => w.key),
+  });
 
   return {
     summary: {
@@ -86,6 +105,7 @@ export async function analyzePlayer(riotId, platform, { onProgress, lang } = {})
       coachText: coaching.text,
       coachSource: coaching.source,
     },
+    progress,
     games,
   };
 }

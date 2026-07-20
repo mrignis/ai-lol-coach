@@ -138,6 +138,8 @@ export async function gameContext(data, me) {
     myArmor: Math.round(stats.armor || 0),
     myMagicResist: Math.round(stats.magicResist || 0),
     myKP,
+    // Direct lane opponent — drives the pre-game matchup briefing.
+    enemyLaner: foes.find(p => p.position && p.position === me.position)?.championName || null,
     nemesis: nemesisPlayer && killsOnMe[nemesisId] >= 2
       ? { champion: nemesisPlayer.championName, times: killsOnMe[nemesisId] }
       : null,

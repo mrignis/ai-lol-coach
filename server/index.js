@@ -5,6 +5,7 @@ import { config, PLATFORMS } from './config.js';
 import { analyzePlayer } from './analyze.js';
 import { fetchLiveData, buildLiveResponse, liveCoachResponse } from './live.js';
 import { visionTip } from './llm.js';
+import { matchupBrief } from './meta.js';
 import { getNews } from './news.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -96,6 +97,27 @@ app.get('/api/live-coach', async (req, res) => {
     if (e.code === 'NOGAME') return res.json({ inGame: false });
     console.error('[live-coach]', e.message);
     res.json({ inGame: false });
+  }
+});
+
+// Pre-game matchup briefing: current-patch build + matchup plan for the
+// champion the player just locked, web-grounded and cached per patch.
+app.get('/api/matchup', async (req, res) => {
+  try {
+    const data = await fetchLiveData();
+    const base = await buildLiveResponse(data, 'mid');
+    if (!base.ready) return res.json({ inGame: base.inGame !== false, ready: false });
+    const brief = await matchupBrief({
+      champ: base.me.champion,
+      vs: base.ctx.enemyLaner,
+      role: base.me.role,
+      lang: req.query.lang || 'en',
+    });
+    res.json({ inGame: true, ready: true, ...brief });
+  } catch (e) {
+    if (e.code === 'NOGAME') return res.json({ inGame: false });
+    console.error('[matchup]', e.message);
+    res.json({ inGame: false, error: 'matchup_failed' });
   }
 });
 
