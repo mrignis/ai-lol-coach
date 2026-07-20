@@ -199,7 +199,11 @@ const COACH_SYSTEM = (phase, lang, role) => {
     'scoreboard and objective state. Give ONE or TWO concrete actions for the next 90 seconds, ' +
     'grounded in the actual game state — every tip MUST reference at least one concrete detail ' +
     'you were given (a champion name, a number, a timer, an objective). Never give generic ' +
-    'filler like "farm safely" or "play well". Never give mechanical spam. Max 45 words total, ' +
+    'filler like "farm safely" or "play well". Never give mechanical spam. ' +
+    'ACTION RULE: never end at a warning ("don\'t go alone", "be careful") — a warning is not ' +
+    'advice. Every threat you name must come with the exact counter-play: WHERE to stand, WHAT ' +
+    'to buy, WHICH cooldown or item spike to wait for, WHERE to ward, WHO engages first. ' +
+    'Structure: threat → your concrete plan. Max 45 words total, ' +
     'no preamble, speak directly ("you"). ' +
     PHASE_BRIEF[phase] + ' ' + (ROLE_BRIEF[role] || '') +
     (lang && lang !== 'en' ? ` Reply in natural, grammatically correct ${langName}.` : '');
