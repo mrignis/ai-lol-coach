@@ -1,6 +1,6 @@
 {
   "name": "lol-coach",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "AI LoL Coach — personal weakness analysis from the official Riot API",

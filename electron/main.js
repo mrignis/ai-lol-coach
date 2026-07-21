@@ -353,24 +353,22 @@ function ensureUserEnv() {
   }
 }
 
-// A build upgrade must not leave the previous version's HTML/JS in Chromium's
-// cache — that showed a stale UI talking to a fresh server.
-async function clearCacheOnUpgrade() {
+// Wipe the renderer cache on every start. Keying this on app.getVersion()
+// wasn't enough: rebuilding the same version number left the previous build's
+// HTML/JS cached, so the window showed a stale UI against a fresh server.
+// The pages come off our own localhost — caching them buys nothing.
+async function clearRendererCache() {
   try {
-    const stamp = path.join(app.getPath('userData'), 'build-version');
-    const seen = fs.existsSync(stamp) ? fs.readFileSync(stamp, 'utf8').trim() : '';
-    if (seen === app.getVersion()) return;
     await session.defaultSession.clearCache();
-    fs.writeFileSync(stamp, app.getVersion());
-    logLine(`cleared renderer cache after upgrade ${seen || '(none)'} → ${app.getVersion()}`);
+    logLine('renderer cache cleared');
   } catch (e) {
-    logLine('clearCacheOnUpgrade failed: ' + (e?.message || e));
+    logLine('clearRendererCache failed: ' + (e?.message || e));
   }
 }
 
 app.whenReady().then(async () => {
   ensureUserEnv();
-  await clearCacheOnUpgrade();
+  await clearRendererCache();
   registerAppRoutes();
   await ensureServer();
   createWindow();   // built hidden; the game (or the user) raises it
