@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, Menu, globalShortcut, desktopCapturer, screen, shell, nativeImage } from 'electron';
+import { app, BrowserWindow, Tray, Menu, globalShortcut, desktopCapturer, screen, shell, nativeImage, session } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -353,8 +353,24 @@ function ensureUserEnv() {
   }
 }
 
+// A build upgrade must not leave the previous version's HTML/JS in Chromium's
+// cache — that showed a stale UI talking to a fresh server.
+async function clearCacheOnUpgrade() {
+  try {
+    const stamp = path.join(app.getPath('userData'), 'build-version');
+    const seen = fs.existsSync(stamp) ? fs.readFileSync(stamp, 'utf8').trim() : '';
+    if (seen === app.getVersion()) return;
+    await session.defaultSession.clearCache();
+    fs.writeFileSync(stamp, app.getVersion());
+    logLine(`cleared renderer cache after upgrade ${seen || '(none)'} → ${app.getVersion()}`);
+  } catch (e) {
+    logLine('clearCacheOnUpgrade failed: ' + (e?.message || e));
+  }
+}
+
 app.whenReady().then(async () => {
   ensureUserEnv();
+  await clearCacheOnUpgrade();
   registerAppRoutes();
   await ensureServer();
   createWindow();   // built hidden; the game (or the user) raises it

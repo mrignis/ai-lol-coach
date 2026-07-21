@@ -18,6 +18,13 @@ for (const p of ENV_CANDIDATES) dotenv.config({ path: p });
 
 export const envPaths = ENV_CANDIDATES;
 
+// The one the user is meant to edit. Not simply the last candidate: that is
+// the packaged resources folder inside Program Files, which is read-only and
+// would send people to the wrong file.
+export const userEnvPath = process.env.APPDATA
+  ? path.join(process.env.APPDATA, 'lol-coach', '.env')
+  : ENV_CANDIDATES[0];
+
 export const config = {
   port: Number(process.env.PORT) || 3000,
   riotKey: process.env.RIOT_API_KEY || '',

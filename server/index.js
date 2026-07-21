@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { config, PLATFORMS, envPaths } from './config.js';
+import { config, PLATFORMS, userEnvPath } from './config.js';
 import { analyzePlayer } from './analyze.js';
 import { fetchLiveData, buildLiveResponse, liveCoachResponse } from './live.js';
 import { visionTip } from './llm.js';
@@ -12,7 +12,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 
 app.use(express.json({ limit: '10mb' })); // vision screenshots arrive as base64 JPEG
-app.use(express.static(path.join(__dirname, '..', 'public')));
+// no-store: Chromium kept serving the previous build's HTML/JS after an app
+// update, so the window showed a stale UI against a fresh server. These files
+// come off localhost — there is nothing to gain from caching them.
+app.use(express.static(path.join(__dirname, '..', 'public'), {
+  etag: false,
+  lastModified: false,
+  setHeaders: res => res.setHeader('Cache-Control', 'no-store'),
+}));
 
 app.get('/api/health', (req, res) => {
   res.json({
@@ -22,7 +29,7 @@ app.get('/api/health', (req, res) => {
     llm: config.llm.provider,
     // Where to paste keys — an installed build ships none, and without this
     // the UI can only say "missing" without saying where to fix it.
-    envPath: envPaths[envPaths.length - 1],
+    envPath: userEnvPath,
   });
 });
 
@@ -54,13 +61,19 @@ app.post('/api/analyze', async (req, res) => {
     res.json(result);
   } catch (e) {
     const code = e.code && Number.isInteger(e.code) ? e.code : 500;
+    // Send a CODE, not prose: the server has no idea which of the 13 UI
+    // languages the user is reading, so the client renders the message.
+    const codes = { 404: 'notFound', 403: 'keyRejected', 429: 'rateLimited' };
     const messages = {
       404: 'Player or matches not found — check the Riot ID and region.',
       403: 'Riot API key was rejected. Dev keys expire every 24h — regenerate it.',
       429: 'Riot rate limit hit. Wait a moment and try again.',
     };
     console.error('[analyze]', e.message);
-    res.status(code).json({ error: messages[code] || e.message || 'Analysis failed' });
+    res.status(code).json({
+      code: codes[code] || null,
+      error: messages[code] || e.message || 'Analysis failed',
+    });
   }
 });
 

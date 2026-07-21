@@ -146,7 +146,8 @@ $('form').addEventListener('submit', async e => {
       body: JSON.stringify({ riotId, region, lang: getLang() }),
     });
     const data = await res.json();
-    if (!res.ok) return showError(data.error || t('errFail'));
+    // Prefer the localized message for a known code; fall back to server prose.
+    if (!res.ok) return showError(data.code ? t('err_' + data.code) : (data.error || t('errFail')));
     render(data);
   } catch {
     showError(t('errServer'));
