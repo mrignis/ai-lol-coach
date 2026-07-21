@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { config, PLATFORMS, userEnvPath } from './config.js';
+import { config, PLATFORMS, userEnvPath, envReport } from './config.js';
 import { analyzePlayer } from './analyze.js';
 import { fetchLiveData, buildLiveResponse, liveCoachResponse } from './live.js';
 import { visionTip } from './llm.js';
@@ -31,6 +31,7 @@ app.get('/api/health', (req, res) => {
     // Where to paste keys — an installed build ships none, and without this
     // the UI can only say "missing" without saying where to fix it.
     envPath: userEnvPath,
+    envReport,
   });
 });
 

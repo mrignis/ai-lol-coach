@@ -14,7 +14,12 @@ const ENV_CANDIDATES = [
   process.resourcesPath && path.join(process.resourcesPath, '.env'), // packaged resources
 ].filter(Boolean);
 
-for (const p of ENV_CANDIDATES) dotenv.config({ path: p });
+// Kept as a report so /api/health can show which file actually supplied the
+// keys — "key missing" is impossible to debug without knowing what was read.
+export const envReport = ENV_CANDIDATES.map(p => {
+  const r = dotenv.config({ path: p });
+  return { path: p, ok: !r.error, keys: r.parsed ? Object.keys(r.parsed).length : 0 };
+});
 
 export const envPaths = ENV_CANDIDATES;
 
