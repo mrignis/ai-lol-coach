@@ -341,13 +341,13 @@ for (const l in SET_STR) Object.assign(LANGS[l], SET_STR[l]);
 
 // Pre-game matchup briefing card.
 const MATCHUP_STR = {
-  en: { matchupTitle: 'Matchup brief' }, uk: { matchupTitle: 'Матчап-брифінг' },
-  fr: { matchupTitle: 'Brief de matchup' }, de: { matchupTitle: 'Matchup-Briefing' },
-  es: { matchupTitle: 'Guía del matchup' }, pl: { matchupTitle: 'Brief matchupu' },
-  pt: { matchupTitle: 'Guia do confronto' }, ru: { matchupTitle: 'Матчап-брифинг' },
-  tr: { matchupTitle: 'Eşleşme özeti' }, ko: { matchupTitle: '매치업 브리핑' },
-  zh: { matchupTitle: '对线简报' }, ja: { matchupTitle: 'マッチアップ要約' },
-  vi: { matchupTitle: 'Tóm tắt đối đầu' },
+  en: { matchupTitle: 'Matchup brief', keyMissing: 'Missing API key:' }, uk: { matchupTitle: 'Матчап-брифінг', keyMissing: 'Не вистачає API-ключа:' },
+  fr: { matchupTitle: 'Brief de matchup', keyMissing: 'Clé API manquante :' }, de: { matchupTitle: 'Matchup-Briefing', keyMissing: 'Fehlender API-Schlüssel:' },
+  es: { matchupTitle: 'Guía del matchup', keyMissing: 'Falta la clave API:' }, pl: { matchupTitle: 'Brief matchupu', keyMissing: 'Brak klucza API:' },
+  pt: { matchupTitle: 'Guia do confronto', keyMissing: 'Falta a chave de API:' }, ru: { matchupTitle: 'Матчап-брифинг', keyMissing: 'Не хватает API-ключа:' },
+  tr: { matchupTitle: 'Eşleşme özeti', keyMissing: 'Eksik API anahtarı:' }, ko: { matchupTitle: '매치업 브리핑', keyMissing: 'API 키 없음:' },
+  zh: { matchupTitle: '对线简报', keyMissing: '缺少 API 密钥：' }, ja: { matchupTitle: 'マッチアップ要約', keyMissing: 'APIキーがありません:' },
+  vi: { matchupTitle: 'Tóm tắt đối đầu', keyMissing: 'Thiếu khóa API:' },
 };
 for (const l in MATCHUP_STR) Object.assign(LANGS[l], MATCHUP_STR[l]);
 

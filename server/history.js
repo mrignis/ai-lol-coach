@@ -1,11 +1,10 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { dataDir as dir } from './paths.js';
 
 // Progress memory: every analysis is appended per player, so the coach can
 // see TRENDS across sessions ("deaths finally dropping, vision stalled")
 // instead of repeating the same speech every time. Spec §8 v0.2.
-const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data');
 const safe = s => String(s).toLowerCase().replace(/[^a-z0-9_-]/gi, '_');
 const fileFor = id => path.join(dir, `history_${safe(id)}.json`);
 

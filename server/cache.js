@@ -1,10 +1,9 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { cacheDir as dir } from './paths.js';
 
 // Match data is immutable once a game ends, so we cache it forever on disk.
 // This keeps re-analyzing the same player during testing off the rate limit.
-const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'cache');
 let ready = false;
 
 async function ensure() {
@@ -26,8 +25,14 @@ export async function get(key) {
   }
 }
 
+// Best-effort on purpose: a cache write that fails (read-only install dir,
+// full disk) must never take down the feature that was only caching a result.
 export async function set(key, value) {
-  await ensure();
-  const file = path.join(dir, safe(key) + '.json');
-  await fs.writeFile(file, JSON.stringify(value));
+  try {
+    await ensure();
+    const file = path.join(dir, safe(key) + '.json');
+    await fs.writeFile(file, JSON.stringify(value));
+  } catch (e) {
+    console.warn('[cache] write failed for', key, '-', e.message);
+  }
 }

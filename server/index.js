@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { config, PLATFORMS } from './config.js';
+import { config, PLATFORMS, envPaths } from './config.js';
 import { analyzePlayer } from './analyze.js';
 import { fetchLiveData, buildLiveResponse, liveCoachResponse } from './live.js';
 import { visionTip } from './llm.js';
@@ -15,7 +15,15 @@ app.use(express.json({ limit: '10mb' })); // vision screenshots arrive as base64
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, riotKey: Boolean(config.riotKey), llm: config.llm.provider });
+  res.json({
+    ok: true,
+    riotKey: Boolean(config.riotKey),
+    aiKey: Boolean(config.llm.groqKey || config.llm.geminiKey),
+    llm: config.llm.provider,
+    // Where to paste keys — an installed build ships none, and without this
+    // the UI can only say "missing" without saying where to fix it.
+    envPath: envPaths[envPaths.length - 1],
+  });
 });
 
 app.get('/api/regions', (req, res) => {

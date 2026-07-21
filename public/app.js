@@ -233,6 +233,18 @@ $('lbWidget').addEventListener('click', async () => {
   pollAppStatus();
 });
 
+// An installed build ships without keys, so say exactly which file to edit
+// rather than letting the news and rotation silently stay empty.
+async function checkKeys() {
+  try {
+    const h = await (await fetch('/api/health')).json();
+    if (h.riotKey && h.aiKey) return;
+    const missing = [!h.riotKey && 'RIOT_API_KEY', !h.aiKey && 'GROQ_API_KEY'].filter(Boolean).join(' + ');
+    $('keyWarn').textContent = `${t('keyMissing')} ${missing} — ${h.envPath}`;
+    $('keyWarn').hidden = false;
+  } catch { /* ignore */ }
+}
+
 // ── League news (patch + free rotation) ────────────────────────────────
 let lastNews = null;
 async function loadNews() {
@@ -279,5 +291,6 @@ if (savedId) $('riotId').value = savedId;
 renderSaved();
 loadRegions();
 loadNews();
+checkKeys();
 pollAppStatus();
 setInterval(pollAppStatus, 5000);
