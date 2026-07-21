@@ -146,8 +146,24 @@ app.post('/api/vision', async (req, res) => {
   }
 });
 
-app.listen(config.port, () => {
-  console.log(`\n  AI LoL Coach → http://localhost:${config.port}`);
-  console.log(`  Riot key: ${config.riotKey ? 'set' : 'MISSING (add RIOT_API_KEY to .env)'}`);
-  console.log(`  LLM provider: ${config.llm.provider}\n`);
-});
+// Bound to 127.0.0.1 on purpose: the default (0.0.0.0) would expose the
+// coach — and the Riot/AI keys behind it — to everyone on the local network.
+export function startServer(port = config.port) {
+  return new Promise((resolve, reject) => {
+    const server = app.listen(port, '127.0.0.1', () => {
+      console.log(`\n  AI LoL Coach → http://localhost:${port}`);
+      console.log(`  Riot key: ${config.riotKey ? 'set' : 'MISSING (add RIOT_API_KEY to .env)'}`);
+      console.log(`  LLM provider: ${config.llm.provider}\n`);
+      resolve(server);
+    });
+    server.on('error', reject);
+  });
+}
+
+// Auto-start only when run directly (`npm start`). When Electron imports this
+// module it calls startServer() itself, so there is no second process — and
+// therefore no console window.
+const runDirectly = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (runDirectly) startServer();
+
+export { app };

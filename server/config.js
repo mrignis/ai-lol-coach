@@ -1,5 +1,12 @@
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+// Resolve .env next to the app, not relative to the current working directory:
+// Electron launches with an unpredictable cwd, and an installed build has none.
+// A real env var (e.g. system GEMINI_API_KEY) still wins — dotenv never overrides.
+dotenv.config({ path: path.join(HERE, '..', '.env') });
 
 export const config = {
   port: Number(process.env.PORT) || 3000,

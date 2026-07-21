@@ -1,38 +1,26 @@
-import { app, BrowserWindow, globalShortcut, desktopCapturer, screen } from 'electron';
+import { app, BrowserWindow, Tray, Menu, globalShortcut, desktopCapturer, screen, shell, nativeImage } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import net from 'net';
-import { spawn } from 'child_process';
+import { startServer } from '../server/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 const PORT = 3000;
 const OVERLAY_URL = `http://localhost:${PORT}/live.html?overlay=1`;
+const COACH_URL = `http://localhost:${PORT}/`;
+const ICON = path.join(ROOT, 'build', 'icon.png');
 
-// ── ensure the coach server is running ────────────────────────────────
-function portOpen(port) {
-  return new Promise(resolve => {
-    const s = net.connect(port, '127.0.0.1');
-    s.on('connect', () => { s.destroy(); resolve(true); });
-    s.on('error', () => resolve(false));
-    setTimeout(() => { s.destroy(); resolve(false); }, 800);
-  });
-}
-async function waitForPort(port, tries = 40) {
-  for (let i = 0; i < tries; i++) {
-    if (await portOpen(port)) return true;
-    await new Promise(r => setTimeout(r, 250));
-  }
-  return false;
-}
+// One instance only: a second launch just reveals the running widget instead
+// of fighting over port 3000.
+if (!app.requestSingleInstanceLock()) app.quit();
 
-let serverProc = null;
-async function ensureServer() {
-  if (await portOpen(PORT)) return;
-  serverProc = spawn('node', ['server/index.js'], { cwd: ROOT, shell: true, stdio: 'ignore', windowsHide: true });
-  await waitForPort(PORT);
-}
+let httpServer = null;
+let win = null;      // transparent in-game overlay
+let coachWin = null; // post-game analysis window
+let tray = null;
+let clickThrough = false;
+let isQuitting = false;
 
 // ── remember where the user parked the widget (pin feature) ───────────
 const boundsFile = () => path.join(app.getPath('userData'), 'overlay-bounds.json');
@@ -62,10 +50,16 @@ function saveBounds() {
   }, 400);
 }
 
-// ── overlay window ────────────────────────────────────────────────────
-let win = null;
-let clickThrough = false;
+// Renderer runs only our own local pages and needs no Node access, so lock it
+// down: no node integration, isolated context, sandboxed.
+const SAFE_WEB_PREFS = {
+  contextIsolation: true,
+  nodeIntegration: false,
+  sandbox: true,
+  webSecurity: true,
+};
 
+// ── overlay window ────────────────────────────────────────────────────
 function createWindow() {
   const saved = loadBounds();
   win = new BrowserWindow({
@@ -73,6 +67,7 @@ function createWindow() {
     height: saved?.height ?? 340,
     x: saved?.x ?? 24,
     y: saved?.y ?? 60,
+    icon: ICON,
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
@@ -83,43 +78,84 @@ function createWindow() {
     fullscreenable: false,
     minWidth: 220,
     minHeight: 130,
-    webPreferences: { contextIsolation: true },
+    webPreferences: SAFE_WEB_PREFS,
   });
   // Float above the game (works when League runs Borderless/Windowed).
   win.setAlwaysOnTop(true, 'screen-saver');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.on('moved', saveBounds);
   win.on('resized', saveBounds);
+  // Closing hides to tray — the app keeps coaching until Quit is chosen.
+  win.on('close', e => {
+    if (!isQuitting) { e.preventDefault(); win.hide(); updateTrayMenu(); }
+  });
   win.loadURL(OVERLAY_URL);
 
   // When the game window is focused it can jump above ours, so keep
   // re-asserting top position (without stealing focus from the game).
   setInterval(() => {
-    if (win && !win.isDestroyed() && win.isVisible() && !clickThrough) {
-      win.setAlwaysOnTop(true, 'screen-saver');
-      win.moveTop();
-    } else if (win && !win.isDestroyed() && win.isVisible()) {
-      win.setAlwaysOnTop(true, 'screen-saver');
-    }
+    if (!win || win.isDestroyed() || !win.isVisible()) return;
+    win.setAlwaysOnTop(true, 'screen-saver');
+    if (!clickThrough) win.moveTop();
   }, 1500);
 }
 
-// ── vision loop: let the AI SEE the screen (minimap, positions) ───────
-// Passive screen-reading only, and only while a game is actually running
-// and the overlay is visible. One frame a minute keeps us far inside the
-// Gemini free tier (a 30-min game ≈ 30 calls).
+function openCoach() {
+  if (coachWin && !coachWin.isDestroyed()) { coachWin.show(); coachWin.focus(); return; }
+  coachWin = new BrowserWindow({
+    width: 900, height: 900, icon: ICON, title: 'AI LoL Coach',
+    backgroundColor: '#0a0e14', webPreferences: SAFE_WEB_PREFS,
+  });
+  coachWin.setMenuBarVisibility(false);
+  coachWin.loadURL(COACH_URL);
+  coachWin.on('closed', () => { coachWin = null; });
+}
+
+// ── vision: capture ONLY the League window ────────────────────────────
+// Privacy rule — never grab the whole desktop. If the game window isn't
+// found we send nothing, so a minimised game can't leak a banking tab or
+// a messenger into the AI request.
+const GAME_WINDOW = /league of legends/i;
+
+let lastFrameSig = null;
+// Cheap perceptual signature: 32x32 grayscale means. Lets us skip the AI call
+// when the screen barely changed (recall screen, shop open, AFK) — fewer
+// requests, less quota burn, less CPU during the game.
+function frameSignature(img) {
+  const small = img.resize({ width: 32, height: 32, quality: 'good' });
+  const bmp = small.toBitmap(); // BGRA
+  const sig = new Uint8Array(32 * 32);
+  for (let i = 0, p = 0; p < sig.length; i += 4, p++) {
+    sig[p] = (bmp[i] * 0.114 + bmp[i + 1] * 0.587 + bmp[i + 2] * 0.299) | 0;
+  }
+  return sig;
+}
+function changedEnough(sig) {
+  if (!lastFrameSig) return true;
+  let diff = 0;
+  for (let i = 0; i < sig.length; i++) diff += Math.abs(sig[i] - lastFrameSig[i]);
+  return diff / sig.length > 6; // mean abs difference out of 255
+}
+
 async function visionLoop() {
   try {
     if (!win || win.isDestroyed() || !win.isVisible()) return;
     const live = await (await fetch(`http://localhost:${PORT}/api/live`)).json();
     if (!live.inGame || !live.ready) return;
-    // Capture at higher res so the minimap crop keeps readable detail.
+
     const sources = await desktopCapturer.getSources({
-      types: ['screen'],
+      types: ['window'],
       thumbnailSize: { width: 1920, height: 1200 },
     });
-    const shot = sources[0]?.thumbnail;
+    const game = sources.find(s => GAME_WINDOW.test(s.name || ''));
+    if (!game) return; // game window not visible → capture nothing at all
+    const shot = game.thumbnail;
     if (!shot || shot.isEmpty()) return;
+
+    const sig = frameSignature(shot);
+    if (!changedEnough(sig)) return; // near-identical frame, skip the API call
+    lastFrameSig = sig;
+
     // Minimap lives in the bottom-right corner (default HUD). Send it as a
     // second zoomed image — in the full frame it's too small for the model.
     const { width, height } = shot.getSize();
@@ -146,22 +182,58 @@ function toggleClickThrough() {
   if (!win) return;
   clickThrough = !clickThrough;
   win.setIgnoreMouseEvents(clickThrough, { forward: true });
+  updateTrayMenu();
+}
+
+function toggleWidget() {
+  if (!win) return;
+  win.isVisible() ? win.hide() : win.show();
+  updateTrayMenu();
+}
+
+// ── tray ──────────────────────────────────────────────────────────────
+function updateTrayMenu() {
+  if (!tray) return;
+  const shown = win && !win.isDestroyed() && win.isVisible();
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: shown ? 'Hide widget' : 'Show widget', click: toggleWidget },
+    { label: clickThrough ? 'Click-through: ON' : 'Click-through: OFF', click: toggleClickThrough },
+    { type: 'separator' },
+    { label: 'Open coach (analysis)', click: openCoach },
+    { label: 'Open in browser', click: () => shell.openExternal(COACH_URL) },
+    { type: 'separator' },
+    { label: 'Quit', click: () => { isQuitting = true; app.quit(); } },
+  ]));
+}
+
+function createTray() {
+  const img = nativeImage.createFromPath(ICON).resize({ width: 16, height: 16 });
+  tray = new Tray(img);
+  tray.setToolTip('AI LoL Coach');
+  tray.on('click', toggleWidget);
+  updateTrayMenu();
 }
 
 app.whenReady().then(async () => {
-  await ensureServer();
+  // Express runs inside this process: no child process, no console window.
+  try {
+    httpServer = await startServer(PORT);
+  } catch (e) {
+    if (e?.code !== 'EADDRINUSE') throw e; // already running elsewhere — reuse it
+  }
   createWindow();
+  createTray();
   setInterval(visionLoop, 60000);
   setTimeout(visionLoop, 8000); // first look shortly after launch, not a minute later
-  globalShortcut.register('Control+Shift+X', toggleClickThrough);       // click-through on/off
-  globalShortcut.register('Control+Shift+H', () => {                      // hide/show overlay
-    if (!win) return;
-    win.isVisible() ? win.hide() : win.show();
-  });
+  globalShortcut.register('Control+Shift+X', toggleClickThrough);
+  globalShortcut.register('Control+Shift+H', toggleWidget);
 });
 
-app.on('window-all-closed', () => app.quit());
+app.on('second-instance', () => { if (win) { win.show(); win.focus(); } });
+// Tray app: closing every window must NOT quit.
+app.on('window-all-closed', () => { /* stay alive in the tray */ });
+app.on('before-quit', () => { isQuitting = true; });
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
-  if (serverProc) { try { serverProc.kill(); } catch { /* ignore */ } }
+  if (httpServer) { try { httpServer.close(); } catch { /* ignore */ } }
 });
