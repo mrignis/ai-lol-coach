@@ -87,7 +87,11 @@ function createWindow() {
   win.on('resized', saveBounds);
   // Closing hides to tray — the app keeps coaching until Quit is chosen.
   win.on('close', e => {
-    if (!isQuitting) { e.preventDefault(); win.hide(); updateTrayMenu(); }
+    if (isQuitting) return;
+    e.preventDefault();
+    win.hide();
+    updateTrayMenu();
+    logLine('widget hidden to tray');
   });
   win.loadURL(OVERLAY_URL);
 
@@ -100,8 +104,9 @@ function createWindow() {
   }, 1500);
 }
 
-function openCoach() {
-  if (coachWin && !coachWin.isDestroyed()) { coachWin.show(); coachWin.focus(); return; }
+async function openCoach() {
+  await ensureServer();
+  if (alive(coachWin)) { coachWin.show(); coachWin.focus(); return; }
   coachWin = new BrowserWindow({
     width: 900, height: 900, icon: ICON, title: 'AI LoL Coach',
     backgroundColor: '#0a0e14', webPreferences: SAFE_WEB_PREFS,
@@ -177,24 +182,43 @@ async function visionLoop() {
   } catch { /* vision is best-effort; the text-only tip still works */ }
 }
 
+const alive = w => w && !w.isDestroyed();
+
+// The widget must always be recoverable from the tray. If the window was
+// destroyed for any reason, rebuild it rather than leaving a dead tray icon
+// the user can click forever with nothing happening.
+function ensureWindow() {
+  if (!alive(win)) createWindow();
+  return win;
+}
+
 // Ctrl+Shift+X → let clicks pass through to the game (and back).
 function toggleClickThrough() {
-  if (!win) return;
+  if (!alive(win)) return;
   clickThrough = !clickThrough;
   win.setIgnoreMouseEvents(clickThrough, { forward: true });
   updateTrayMenu();
 }
 
 function toggleWidget() {
-  if (!win) return;
-  win.isVisible() ? win.hide() : win.show();
+  const w = ensureWindow();
+  if (alive(w) && w.isVisible()) {
+    w.hide();
+  } else {
+    // Always restore in an interactive state: a widget that comes back
+    // click-through looks visible but ignores every click.
+    clickThrough = false;
+    w.setIgnoreMouseEvents(false);
+    w.show();
+    w.setAlwaysOnTop(true, 'screen-saver');
+  }
   updateTrayMenu();
 }
 
 // ── tray ──────────────────────────────────────────────────────────────
 function updateTrayMenu() {
   if (!tray) return;
-  const shown = win && !win.isDestroyed() && win.isVisible();
+  const shown = alive(win) && win.isVisible();
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: shown ? 'Hide widget' : 'Show widget', click: toggleWidget },
     { label: clickThrough ? 'Click-through: ON' : 'Click-through: OFF', click: toggleClickThrough },
@@ -209,18 +233,39 @@ function updateTrayMenu() {
 function createTray() {
   const img = nativeImage.createFromPath(ICON).resize({ width: 16, height: 16 });
   tray = new Tray(img);
-  tray.setToolTip('AI LoL Coach');
+  tray.setToolTip('AI LoL Coach — click to show/hide the widget');
   tray.on('click', toggleWidget);
+  tray.on('double-click', toggleWidget);
   updateTrayMenu();
 }
 
-app.whenReady().then(async () => {
-  // Express runs inside this process: no child process, no console window.
+// There is no console to print to, so failures go to a log file the user
+// (and we) can read: %APPDATA%/AI LoL Coach/main.log
+function logLine(msg) {
+  try {
+    fs.appendFileSync(path.join(app.getPath('userData'), 'main.log'),
+      `[${new Date().toISOString()}] ${msg}\n`);
+  } catch { /* logging must never break the app */ }
+}
+process.on('uncaughtException', e => logLine('uncaughtException: ' + (e?.stack || e)));
+process.on('unhandledRejection', e => logLine('unhandledRejection: ' + (e?.stack || e)));
+
+// Express runs inside this process: no child process, no console window.
+// Re-checked before work that needs it, so a dead socket self-heals instead
+// of leaving a running tray icon backed by nothing.
+async function ensureServer() {
+  if (httpServer && httpServer.listening) return;
   try {
     httpServer = await startServer(PORT);
+    logLine('server listening on 127.0.0.1:' + PORT);
   } catch (e) {
-    if (e?.code !== 'EADDRINUSE') throw e; // already running elsewhere — reuse it
+    httpServer = null;
+    if (e?.code !== 'EADDRINUSE') logLine('startServer failed: ' + (e?.stack || e));
   }
+}
+
+app.whenReady().then(async () => {
+  await ensureServer();
   createWindow();
   createTray();
   setInterval(visionLoop, 60000);
