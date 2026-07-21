@@ -1,17 +1,42 @@
-# AI LoL Coach — MVP v0.1
+# AI LoL Coach
 
-Reads your last 20 ranked games via the **official Riot API**, finds *your* recurring
-weaknesses (not generic tier-list advice), and explains the 3 things you personally
-should fix to win more.
+A Windows desktop app that reads your last 20 ranked games via the **official Riot
+API**, finds *your* recurring weaknesses (not generic tier-list advice), and coaches
+you — after the game and, through an in-game overlay, during it.
 
-## Setup
+One program: a launcher window (analysis, news, saved accounts), a transparent
+overlay that appears by itself when a match starts, and a tray icon it hides into.
+
+## Install (built app)
 
 ```bash
 npm install
-cp .env.example .env      # Windows: copy .env.example .env
+npm run dist          # → dist/AI LoL Coach Setup <version>.exe
 ```
 
-Then edit `.env`:
+Run the installer, then **paste your keys** into:
+
+```
+%APPDATA%\lol-coach\.env
+```
+
+The app creates that file from the template on first run. Keys are deliberately
+**not** bundled into the installer, so the .exe is safe to hand to someone else.
+Restart the app after editing. Closing the window hides it to the tray; quit from
+the tray menu.
+
+## Run from source
+
+```bash
+npm install
+copy .env.example .env
+npm start             # Electron app (launcher + overlay + server in one process)
+npm run server        # just the HTTP API, no desktop shell
+```
+
+Double-clicking `AI LoL Coach.vbs` starts it with no console window.
+
+## Keys
 
 - `RIOT_API_KEY` — get one at https://developer.riotgames.com (dev keys expire every 24h).
 - `GROQ_API_KEY` — free at https://console.groq.com (1000 req/day). Primary AI

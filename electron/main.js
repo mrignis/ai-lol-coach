@@ -309,8 +309,9 @@ function createTray() {
 // (and we) can read: %APPDATA%/AI LoL Coach/main.log
 function logLine(msg) {
   try {
-    fs.appendFileSync(path.join(app.getPath('userData'), 'main.log'),
-      `[${new Date().toISOString()}] ${msg}\n`);
+    const dir = app.getPath('userData');
+    fs.mkdirSync(dir, { recursive: true }); // may not exist on a fresh install
+    fs.appendFileSync(path.join(dir, 'main.log'), `[${new Date().toISOString()}] ${msg}\n`);
   } catch { /* logging must never break the app */ }
 }
 process.on('uncaughtException', e => logLine('uncaughtException: ' + (e?.stack || e)));
