@@ -7,6 +7,7 @@ import { fetchLiveData, buildLiveResponse, liveCoachResponse } from './live.js';
 import { visionTip } from './llm.js';
 import { matchupBrief } from './meta.js';
 import { getNews } from './news.js';
+import { getChampions } from './ddragon.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -139,6 +140,32 @@ app.get('/api/matchup', async (req, res) => {
     if (e.code === 'NOGAME') return res.json({ inGame: false });
     console.error('[matchup]', e.message);
     res.json({ inGame: false, error: 'matchup_failed' });
+  }
+});
+
+// Champion list for the build search (names only, from Data Dragon).
+app.get('/api/champions', async (req, res) => {
+  try {
+    const champs = await getChampions();
+    res.json({ champions: Object.keys(champs).sort() });
+  } catch (e) {
+    console.error('[champions]', e.message);
+    res.json({ champions: [] });
+  }
+});
+
+// Build & strategy lookup — same web-grounded engine as the in-game matchup
+// brief, but usable any time from the launcher, no live game required.
+app.get('/api/build', async (req, res) => {
+  const champ = String(req.query.champ || '').slice(0, 40).trim();
+  if (!champ) return res.status(400).json({ error: 'champ required' });
+  const role = String(req.query.role || '').slice(0, 20).trim() || 'MIDDLE';
+  const vs = String(req.query.vs || '').slice(0, 40).trim() || null;
+  try {
+    res.json(await matchupBrief({ champ, vs, role, lang: req.query.lang || 'en' }));
+  } catch (e) {
+    console.error('[build]', e.message);
+    res.status(500).json({ error: 'build_lookup_failed' });
   }
 });
 

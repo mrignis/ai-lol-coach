@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Builds · AI LoL Coach</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header class="head">
+      <div class="langbar"><select id="lang" class="field lang" aria-label="Language"></select></div>
+      <h1 data-i18n="buildsTitle">Builds &amp; strategy</h1>
+      <p class="tag" data-i18n="buildsTag">Current-patch build and game plan for any champion, looked up on the web.</p>
+    </header>
+
+    <nav class="mainnav">
+      <a href="/" class="navbtn" data-i18n="navHome">Home</a>
+      <a href="/builds.html" class="navbtn active" data-i18n="navBuilds">Builds</a>
+      <a href="/live.html" class="navbtn" data-i18n="navBot">Live Bot</a>
+    </nav>
+
+    <form id="bForm" class="controls" autocomplete="off">
+      <input id="bChamp" class="field" list="champList" type="text" data-i18n-ph="buildsChamp" placeholder="Champion" required />
+      <datalist id="champList"></datalist>
+      <input id="bVs" class="field" list="champList" type="text" data-i18n-ph="buildsVs" placeholder="vs (optional)" />
+      <select id="bRole" class="field">
+        <option value="TOP">Top</option>
+        <option value="JUNGLE">Jungle</option>
+        <option value="MIDDLE" selected>Mid</option>
+        <option value="BOTTOM">ADC</option>
+        <option value="UTILITY">Support</option>
+      </select>
+      <button id="bGo" class="btn" type="submit" data-i18n="buildsSearch">Search</button>
+    </form>
+
+    <p id="bError" class="error" hidden></p>
+
+    <section id="bLoading" class="loading" hidden>
+      <div class="spinner"></div>
+      <p data-i18n="buildsLoading">reading current guides…</p>
+    </section>
+
+    <section id="bResult" class="card" hidden>
+      <div class="news-head">
+        <h3 id="bTitle"></h3>
+        <span id="bPatch" class="muted"></span>
+      </div>
+      <div id="bBody" class="ai-tip"></div>
+      <p id="bSource" class="source muted"></p>
+    </section>
+
+    <footer class="foot muted" data-i18n="footer">Official Riot API · post-game coaching only · not affiliated with Riot Games</footer>
+  </main>
+  <script src="i18n.js"></script>
+  <script src="builds.js"></script>
+</body>
+</html>
