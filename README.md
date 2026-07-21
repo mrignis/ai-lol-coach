@@ -1,94 +1,165 @@
 # AI LoL Coach
 
-A Windows desktop app that reads your last 20 ranked games via the **official Riot
-API**, finds *your* recurring weaknesses (not generic tier-list advice), and coaches
-you — after the game and, through an in-game overlay, during it.
+A desktop coach for League of Legends that knows **you**, not just the game.
 
-One program: a launcher window (analysis, news, saved accounts), a transparent
-overlay that appears by itself when a match starts, and a tray icon it hides into.
+It reads your last 20 ranked games through the official Riot API, works out the
+3 things *you personally* should fix, and — while you play — shows a small
+overlay with live nudges and AI advice based on the actual state of the match.
 
-## Install (built app)
+- 🖥 **One app**: launcher window + in-game overlay, lives in the system tray
+- 🎯 **Post-game analysis**: your metrics vs benchmarks for your role and rank
+- ⚡ **In-game widget**: CS/vision/deaths pace, objective timers, AI tips
+- 📈 **Progress memory**: compares sessions so the coach stops repeating itself
+- 🌍 **13 languages**, including Ukrainian, and the AI answers in your language
+
+---
+
+## Install
+
+**Option A — installer (recommended)**
+
+1. Download / build `AI LoL Coach Setup 0.1.0.exe` (see *Build* below).
+2. Run it. The app installs per-user (no admin rights needed).
+3. Launch **AI LoL Coach** from the Start menu.
+
+**Option B — from source**
 
 ```bash
+git clone https://github.com/mrignis/ai-lol-coach
+cd ai-lol-coach
 npm install
-npm run dist          # → dist/AI LoL Coach Setup <version>.exe
-```
-
-Run the installer, then **paste your keys** into:
-
-```
-%APPDATA%\lol-coach\.env
-```
-
-The app creates that file from the template on first run. Keys are deliberately
-**not** bundled into the installer, so the .exe is safe to hand to someone else.
-Restart the app after editing. Closing the window hides it to the tray; quit from
-the tray menu.
-
-## Run from source
-
-```bash
-npm install
-copy .env.example .env
-npm start             # Electron app (launcher + overlay + server in one process)
-npm run server        # just the HTTP API, no desktop shell
-```
-
-Double-clicking `AI LoL Coach.vbs` starts it with no console window.
-
-## Keys
-
-- `RIOT_API_KEY` — get one at https://developer.riotgames.com (dev keys expire every 24h).
-- `GROQ_API_KEY` — free at https://console.groq.com (1000 req/day). Primary AI
-  (`openai/gpt-oss-120b`), answers in under a second.
-- `GEMINI_API_KEY` — free at https://aistudio.google.com. Text fallback and the
-  vision provider (in-game screenshot analysis).
-- `LLM_PROVIDER` — `groq` (default), `gemini`, or `none`. The server automatically
-  falls back groq → gemini → localized template, so a capped free tier never
-  silences the coach.
-
-## Prove the data pipeline (no UI)
-
-```bash
-npm run probe -- "Faker#KR1" kr
-```
-
-Prints the 20 games' stats, aggregate metrics, and your worst gaps.
-Platforms: `na1 euw1 eun1 kr br1 jp1 la1 la2 oc1 tr1 ru`.
-
-## Run the app
-
-```bash
 npm start
-# → http://localhost:3000
 ```
 
-Type your Riot ID (`Name#TAG`), pick your region, hit **Analyze**.
+---
 
-## How it works
+## 🔑 API keys — the important part
 
-- `server/riot.js` — Riot API client (Account-V1 → League-V4 → Match-V5), disk-cached
-  per match, 429 back-off, light throttle.
-- `server/benchmarks.js` — **the one file you tune.** Per-role, per-tier targets.
-- `server/engine.js` — averages your metrics, ranks the gaps vs your rank's benchmark,
-  takes the worst 3.
-- `server/llm.js` — sends those 3 gaps + your numbers to the LLM in a coaching prompt.
-- `public/` — the UI.
+The app ships with **no keys** (an installer must never carry them), so on the
+first run it creates an empty settings file for you and the launcher shows a
+banner telling you exactly where it is.
 
-## Tuning benchmarks
+**Where to put the keys**
 
-Everything the gap engine compares against lives in `BENCHMARKS` in
-`server/benchmarks.js`. Edit the numbers, restart, re-analyze — no other changes needed.
+| How you run it | File to edit |
+|---|---|
+| Installed app | `%APPDATA%\lol-coach\.env` |
+| From source | `.env` in the project folder (copy `.env.example`) |
 
-## Notes / limits (v0.1)
+Paste it into Explorer's address bar to open the folder:
 
-- **Role-mixing**: metrics are averaged across every role you queued and compared to your
-  *main* role's benchmark. Flagged in the UI. Segmenting by role is a v0.2 job
-  (see the `NOTE` in `engine.js`).
-- Riot ToS: analysis & post-game coaching only. No overlays, no live-game decisions.
+```
+%APPDATA%\lol-coach
+```
 
-## Deploy later
+Open `.env` in Notepad and fill in the values below.
 
-Backend + static frontend. Deployable to any Node host (Render/Railway/Fly) or adapt the
-API routes to a serverless function. Both AI providers (Groq, Gemini) are cloud APIs,
-so the hosted build works unchanged — just set the same env vars.
+### 1. Riot API key — required
+
+Without it the app can't read your matches, rank, or the champion rotation.
+
+1. Go to **https://developer.riotgames.com** and sign in with your Riot account.
+2. On the dashboard find **DEVELOPMENT API KEY**.
+3. Tick the reCAPTCHA, press **REGENERATE API KEY**.
+4. Copy the key (starts with `RGAPI-`) and put it in `.env`:
+
+```env
+RIOT_API_KEY=RGAPI-your-key-here
+```
+
+> ⚠️ **A development key expires every 24 hours.** You have to regenerate it and
+> paste it again each day. To avoid that, apply for a free **Personal API Key**
+> on the same site (Register Product → Personal) — it doesn't expire.
+
+### 2. Groq key — required for AI coaching
+
+Free, no card, ~1000 requests/day. This is the main brain.
+
+1. Go to **https://console.groq.com** and sign in (Google works).
+2. Left menu → **API Keys** → **Create API Key**.
+3. Copy it (starts with `gsk_`) — it's shown only once — and add:
+
+```env
+GROQ_API_KEY=gsk_your-key-here
+```
+
+### 3. Gemini key — optional, but adds screen vision
+
+Used as an AI fallback **and** for reading your screen during a game (minimap,
+enemy positions) and for looking up current-patch builds.
+
+1. Go to **https://aistudio.google.com/apikey** → **Create API key**.
+2. Add it:
+
+```env
+GEMINI_API_KEY=AIza-your-key-here
+```
+
+**Restart the app** after editing `.env`.
+
+### What works without any keys
+
+The in-game widget still runs: live KDA, CS/min, vision, gold, objective
+timers and rule-based nudges. That part uses League's **local** Live Client
+Data API (`127.0.0.1:2999`) and needs no key and no internet.
+
+---
+
+## Using it
+
+- **Launcher window** — type your Riot ID (`Name#TAG`), pick your region, press
+  Analyze. Star ★ saves the account for next time.
+- **Widget** — appears by itself when a game starts. Gear ⚙ sets opacity, size
+  and which panels to show; 📌 pins it in place.
+- **Tray icon** — click to show/hide the widget; right-click for the menu.
+  Closing a window hides the app to the tray, it keeps coaching. Use **Quit**
+  in the tray menu to actually exit.
+- **Hotkeys** — `Ctrl+Shift+H` show/hide the widget, `Ctrl+Shift+X` click-through.
+
+> The overlay can only draw over the game in **Borderless / Windowed** mode.
+> Exclusive Fullscreen takes over the display and hides every other window —
+> that's a Windows limitation, not a bug.
+
+---
+
+## Privacy & security
+
+- **Screen capture**: only the **League window** is ever captured — never your
+  whole desktop. If the game window isn't found, nothing is sent at all.
+  Frames go to Gemini only while a game is running and the widget is visible,
+  at most once a minute, and only if the picture actually changed.
+- **Local server**: bound to `127.0.0.1`, so nobody else on your network can
+  reach it or your keys.
+- **Keys**: stay in your own `.env`, are never bundled into the installer, and
+  never reach the browser/renderer.
+- **Riot ToS**: analysis and nudges only. Read-only official APIs, no memory
+  reading, no injection, no automation — it advises, it never plays for you.
+
+---
+
+## Build
+
+```bash
+npm run icon    # regenerate build/icon.png
+npm run dist    # -> dist/AI LoL Coach Setup 0.1.0.exe
+```
+
+## Tuning
+
+- `server/benchmarks.js` — the per-role, per-tier targets the whole weakness
+  engine compares you against. Edit numbers, restart, re-analyze.
+- `npm run probe -- "Name#TAG" na1` — prints the raw pipeline without any UI.
+
+## How it fits together
+
+| Piece | File |
+|---|---|
+| Riot client (Account-V1 → League-V4 → Match-V5) | `server/riot.js` |
+| Weakness engine (metrics → gaps → top 3) | `server/engine.js` |
+| Benchmarks | `server/benchmarks.js` |
+| In-game state, nudges, phases | `server/live.js` |
+| AI providers + prompts (Groq → Gemini → template) | `server/llm.js` |
+| Desktop shell, tray, overlay, screen capture | `electron/main.js` |
+| UI + 13 languages | `public/` |
+
+Not affiliated with Riot Games.
