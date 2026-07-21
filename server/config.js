@@ -3,10 +3,20 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-// Resolve .env next to the app, not relative to the current working directory:
-// Electron launches with an unpredictable cwd, and an installed build has none.
-// A real env var (e.g. system GEMINI_API_KEY) still wins — dotenv never overrides.
-dotenv.config({ path: path.join(HERE, '..', '.env') });
+// Resolve .env by absolute path, never via the current working directory:
+// Electron launches with an unpredictable cwd and an installed build has none.
+// Keys are deliberately NOT bundled into the installer, so an installed copy
+// reads them from the user's own config folder. First file to define a key
+// wins, and a real environment variable always beats all of them.
+const ENV_CANDIDATES = [
+  path.join(HERE, '..', '.env'),                                   // dev checkout
+  process.env.APPDATA && path.join(process.env.APPDATA, 'lol-coach', '.env'), // installed
+  process.resourcesPath && path.join(process.resourcesPath, '.env'), // packaged resources
+].filter(Boolean);
+
+for (const p of ENV_CANDIDATES) dotenv.config({ path: p });
+
+export const envPaths = ENV_CANDIDATES;
 
 export const config = {
   port: Number(process.env.PORT) || 3000,

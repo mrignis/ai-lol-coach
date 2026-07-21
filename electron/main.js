@@ -330,7 +330,30 @@ async function ensureServer() {
   }
 }
 
+// An installed build ships no keys (they must never travel inside an
+// installer). Drop an editable template next to the user's config on first
+// run so there is an obvious file to paste keys into.
+function ensureUserEnv() {
+  try {
+    const dir = path.join(app.getPath('appData'), 'lol-coach');
+    const target = path.join(dir, '.env');
+    if (fs.existsSync(target)) return target;
+    const template = app.isPackaged
+      ? path.join(process.resourcesPath, '.env.example')
+      : path.join(ROOT, '.env.example');
+    if (!fs.existsSync(template)) return target;
+    fs.mkdirSync(dir, { recursive: true });
+    fs.copyFileSync(template, target);
+    logLine('created key template at ' + target);
+    return target;
+  } catch (e) {
+    logLine('ensureUserEnv failed: ' + (e?.message || e));
+    return null;
+  }
+}
+
 app.whenReady().then(async () => {
+  ensureUserEnv();
   registerAppRoutes();
   await ensureServer();
   createWindow();   // built hidden; the game (or the user) raises it
