@@ -13,5 +13,8 @@ export const DATA_ROOT = process.env.LOLCOACH_DATA_DIR
     ? path.join(process.env.APPDATA, 'lol-coach')
     : path.join(HERE, '..'));
 
-export const cacheDir = path.join(DATA_ROOT, 'cache');
-export const dataDir = path.join(DATA_ROOT, 'data');
+// NOT "cache"/"data": in a packaged build DATA_ROOT is also Electron's
+// userData, where Chromium keeps its own cache under those names and holds
+// the files locked. Sharing them made our cache unreadable/unclearable.
+export const cacheDir = path.join(DATA_ROOT, packaged ? 'coach-cache' : 'cache');
+export const dataDir = path.join(DATA_ROOT, packaged ? 'coach-history' : 'data');

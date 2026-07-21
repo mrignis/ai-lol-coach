@@ -50,6 +50,8 @@ export async function getNews(platform) {
     rotation,
     _ts: Date.now(),
   };
-  await cache.set(key, result);
+  // Never cache an empty rotation: a missing/expired key or a transient Riot
+  // error would otherwise pin "no champions" for the whole TTL.
+  if (rotation.length) await cache.set(key, result);
   return result;
 }
