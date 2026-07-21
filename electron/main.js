@@ -2,7 +2,7 @@ import { app, BrowserWindow, Tray, Menu, globalShortcut, desktopCapturer, screen
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { startServer } from '../server/index.js';
+import { startServer, app as expressApp } from '../server/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -16,11 +16,12 @@ const ICON = path.join(ROOT, 'build', 'icon.png');
 if (!app.requestSingleInstanceLock()) app.quit();
 
 let httpServer = null;
-let win = null;      // transparent in-game overlay
-let coachWin = null; // post-game analysis window
+let win = null;         // transparent in-game overlay
+let launcherWin = null; // main app window (hub: analysis + widget control)
 let tray = null;
 let clickThrough = false;
 let isQuitting = false;
+let autoShown = false;  // overlay was raised by game detection, not by hand
 
 // ── remember where the user parked the widget (pin feature) ───────────
 const boundsFile = () => path.join(app.getPath('userData'), 'overlay-bounds.json');
@@ -68,6 +69,7 @@ function createWindow() {
     x: saved?.x ?? 24,
     y: saved?.y ?? 60,
     icon: ICON,
+    show: false, // the launcher is what greets you; this appears for a game
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
@@ -83,6 +85,9 @@ function createWindow() {
   // Float above the game (works when League runs Borderless/Windowed).
   win.setAlwaysOnTop(true, 'screen-saver');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  // Those two calls can flip the window back to "visible" internally, which
+  // desynced the launcher's Show/Hide button. Pin the documented start state.
+  win.hide();
   win.on('moved', saveBounds);
   win.on('resized', saveBounds);
   // Closing hides to tray — the app keeps coaching until Quit is chosen.
@@ -104,16 +109,74 @@ function createWindow() {
   }, 1500);
 }
 
-async function openCoach() {
+// The launcher is the app's home window: analysis, news and widget controls.
+// This is what opens on start — the overlay only appears for a game.
+async function openLauncher() {
   await ensureServer();
-  if (alive(coachWin)) { coachWin.show(); coachWin.focus(); return; }
-  coachWin = new BrowserWindow({
-    width: 900, height: 900, icon: ICON, title: 'AI LoL Coach',
-    backgroundColor: '#0a0e14', webPreferences: SAFE_WEB_PREFS,
+  if (alive(launcherWin)) { launcherWin.show(); launcherWin.focus(); return; }
+  launcherWin = new BrowserWindow({
+    width: 960, height: 900, minWidth: 420, minHeight: 500,
+    icon: ICON, title: 'AI LoL Coach',
+    // Shown immediately: backgroundColor already prevents a white flash, and
+    // waiting on ready-to-show risks a launcher that never appears at all.
+    backgroundColor: '#0a0e14',
+    webPreferences: SAFE_WEB_PREFS,
   });
-  coachWin.setMenuBarVisibility(false);
-  coachWin.loadURL(COACH_URL);
-  coachWin.on('closed', () => { coachWin = null; });
+  launcherWin.setMenuBarVisibility(false);
+  launcherWin.webContents.on('did-fail-load', (_e, code, desc, url) =>
+    logLine(`launcher failed to load ${url}: ${code} ${desc}`));
+  launcherWin.loadURL(COACH_URL);
+  logLine('launcher opened');
+  // Closing the launcher keeps the app coaching from the tray.
+  launcherWin.on('close', e => {
+    if (isQuitting) return;
+    e.preventDefault();
+    launcherWin.hide();
+    updateTrayMenu();
+  });
+}
+
+// ── auto-show the overlay when a game starts ──────────────────────────
+// Launcher behaviour: you open the app once, it waits, and the widget
+// appears by itself for the match — then steps out of the way afterwards.
+let wasInGame = false;
+async function gameWatch() {
+  try {
+    const live = await (await fetch(`http://localhost:${PORT}/api/live`)).json();
+    const inGame = !!live.inGame;
+    if (inGame && !wasInGame) {
+      logLine('game detected → showing widget');
+      const w = ensureWindow();
+      if (!w.isVisible()) { autoShown = true; showWidget(); }
+    } else if (!inGame && wasInGame) {
+      logLine('game ended');
+      // Only retract what we raised: never hide a widget the user opened.
+      if (autoShown && alive(win) && win.isVisible()) { win.hide(); updateTrayMenu(); }
+      autoShown = false;
+    }
+    wasInGame = inGame;
+  } catch { /* server not up yet */ }
+}
+
+// ── controls exposed to the launcher page ─────────────────────────────
+// Registered on the in-process Express app, so the sandboxed renderer needs
+// no Node access or preload bridge to drive the window.
+function registerAppRoutes() {
+  expressApp.get('/api/app/status', (req, res) => {
+    res.json({
+      desktop: true,
+      widgetVisible: alive(win) && win.isVisible(),
+      clickThrough,
+      inGame: wasInGame,
+    });
+  });
+  expressApp.post('/api/app/widget', (req, res) => {
+    const action = String(req.body?.action || 'toggle');
+    if (action === 'show') { autoShown = false; showWidget(); }
+    else if (action === 'hide') { if (alive(win)) win.hide(); updateTrayMenu(); }
+    else toggleWidget();
+    res.json({ widgetVisible: alive(win) && win.isVisible() });
+  });
 }
 
 // ── vision: capture ONLY the League window ────────────────────────────
@@ -200,19 +263,21 @@ function toggleClickThrough() {
   updateTrayMenu();
 }
 
+// Always restore in an interactive state: a widget that comes back
+// click-through looks visible but ignores every click.
+function showWidget() {
+  const w = ensureWindow();
+  clickThrough = false;
+  w.setIgnoreMouseEvents(false);
+  w.show();
+  w.setAlwaysOnTop(true, 'screen-saver');
+  updateTrayMenu();
+}
+
 function toggleWidget() {
   const w = ensureWindow();
-  if (alive(w) && w.isVisible()) {
-    w.hide();
-  } else {
-    // Always restore in an interactive state: a widget that comes back
-    // click-through looks visible but ignores every click.
-    clickThrough = false;
-    w.setIgnoreMouseEvents(false);
-    w.show();
-    w.setAlwaysOnTop(true, 'screen-saver');
-  }
-  updateTrayMenu();
+  if (alive(w) && w.isVisible()) { w.hide(); autoShown = false; updateTrayMenu(); }
+  else showWidget();
 }
 
 // ── tray ──────────────────────────────────────────────────────────────
@@ -220,10 +285,11 @@ function updateTrayMenu() {
   if (!tray) return;
   const shown = alive(win) && win.isVisible();
   tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Open AI LoL Coach', click: openLauncher },
+    { type: 'separator' },
     { label: shown ? 'Hide widget' : 'Show widget', click: toggleWidget },
     { label: clickThrough ? 'Click-through: ON' : 'Click-through: OFF', click: toggleClickThrough },
     { type: 'separator' },
-    { label: 'Open coach (analysis)', click: openCoach },
     { label: 'Open in browser', click: () => shell.openExternal(COACH_URL) },
     { type: 'separator' },
     { label: 'Quit', click: () => { isQuitting = true; app.quit(); } },
@@ -265,16 +331,22 @@ async function ensureServer() {
 }
 
 app.whenReady().then(async () => {
+  registerAppRoutes();
   await ensureServer();
-  createWindow();
+  createWindow();   // built hidden; the game (or the user) raises it
   createTray();
+  await openLauncher();
+  setInterval(gameWatch, 8000);
+  setTimeout(gameWatch, 2000);
   setInterval(visionLoop, 60000);
   setTimeout(visionLoop, 8000); // first look shortly after launch, not a minute later
   globalShortcut.register('Control+Shift+X', toggleClickThrough);
   globalShortcut.register('Control+Shift+H', toggleWidget);
 });
 
-app.on('second-instance', () => { if (win) { win.show(); win.focus(); } });
+// Launching again (or clicking the shortcut) reopens the launcher.
+app.on('second-instance', openLauncher);
+app.on('activate', openLauncher);
 // Tray app: closing every window must NOT quit.
 app.on('window-all-closed', () => { /* stay alive in the tray */ });
 app.on('before-quit', () => { isQuitting = true; });

@@ -351,6 +351,24 @@ const MATCHUP_STR = {
 };
 for (const l in MATCHUP_STR) Object.assign(LANGS[l], MATCHUP_STR[l]);
 
+// Desktop launcher bar (only shown when Electron hosts the page).
+const LB_STR = {
+  en: { lbInGame: 'In game — widget active', lbNoGame: 'Waiting for a game', lbShowWidget: 'Show widget', lbHideWidget: 'Hide widget' },
+  uk: { lbInGame: 'У грі — віджет активний', lbNoGame: 'Очікую гру', lbShowWidget: 'Показати віджет', lbHideWidget: 'Сховати віджет' },
+  fr: { lbInGame: 'En partie — widget actif', lbNoGame: 'En attente d’une partie', lbShowWidget: 'Afficher le widget', lbHideWidget: 'Masquer le widget' },
+  de: { lbInGame: 'Im Spiel — Widget aktiv', lbNoGame: 'Warte auf ein Spiel', lbShowWidget: 'Widget zeigen', lbHideWidget: 'Widget ausblenden' },
+  es: { lbInGame: 'En partida — widget activo', lbNoGame: 'Esperando una partida', lbShowWidget: 'Mostrar widget', lbHideWidget: 'Ocultar widget' },
+  pl: { lbInGame: 'W grze — widżet aktywny', lbNoGame: 'Czekam na grę', lbShowWidget: 'Pokaż widżet', lbHideWidget: 'Ukryj widżet' },
+  pt: { lbInGame: 'Em jogo — widget ativo', lbNoGame: 'Aguardando uma partida', lbShowWidget: 'Mostrar widget', lbHideWidget: 'Ocultar widget' },
+  ru: { lbInGame: 'В игре — виджет активен', lbNoGame: 'Ожидаю игру', lbShowWidget: 'Показать виджет', lbHideWidget: 'Скрыть виджет' },
+  tr: { lbInGame: 'Oyunda — widget aktif', lbNoGame: 'Maç bekleniyor', lbShowWidget: 'Widget’ı göster', lbHideWidget: 'Widget’ı gizle' },
+  ko: { lbInGame: '게임 중 — 위젯 활성', lbNoGame: '게임 대기 중', lbShowWidget: '위젯 표시', lbHideWidget: '위젯 숨기기' },
+  zh: { lbInGame: '游戏中 — 小部件已启用', lbNoGame: '等待对局', lbShowWidget: '显示小部件', lbHideWidget: '隐藏小部件' },
+  ja: { lbInGame: 'ゲーム中 — ウィジェット有効', lbNoGame: '試合を待機中', lbShowWidget: 'ウィジェットを表示', lbHideWidget: 'ウィジェットを隠す' },
+  vi: { lbInGame: 'Trong trận — tiện ích đang bật', lbNoGame: 'Đang chờ trận đấu', lbShowWidget: 'Hiện tiện ích', lbHideWidget: 'Ẩn tiện ích' },
+};
+for (const l in LB_STR) Object.assign(LANGS[l], LB_STR[l]);
+
 // Progress-over-time section on the results page.
 const PROGRESS_STR = {
   en: { progressTitle: 'Progress vs your recent sessions' }, uk: { progressTitle: 'Прогрес відносно минулих сесій' },

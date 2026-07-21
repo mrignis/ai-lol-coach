@@ -204,6 +204,35 @@ $('saved').addEventListener('click', e => {
   }
 });
 
+// ── desktop launcher bar ───────────────────────────────────────────────
+// /api/app/* only exists when Electron is hosting the server, so a plain
+// browser silently skips this and the page stays a normal web app.
+let appStatus = null;
+async function pollAppStatus() {
+  try {
+    const res = await fetch('/api/app/status');
+    if (!res.ok) return;
+    appStatus = await res.json();
+    renderLauncherBar();
+  } catch { /* browser mode */ }
+}
+function renderLauncherBar() {
+  if (!appStatus?.desktop) return;
+  $('launcherBar').hidden = false;
+  $('lbGame').textContent = appStatus.inGame ? t('lbInGame') : t('lbNoGame');
+  $('lbWidget').textContent = appStatus.widgetVisible ? t('lbHideWidget') : t('lbShowWidget');
+}
+$('lbWidget').addEventListener('click', async () => {
+  try {
+    await fetch('/api/app/widget', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'toggle' }),
+    });
+  } catch { /* ignore */ }
+  pollAppStatus();
+});
+
 // ── League news (patch + free rotation) ────────────────────────────────
 let lastNews = null;
 async function loadNews() {
@@ -240,6 +269,7 @@ document.addEventListener('langchange', () => {
   if (lastData) render(lastData);
   renderSaved();
   renderNews();
+  renderLauncherBar();
 });
 
 // Prefill the last-used Riot ID so returning users don't retype it.
@@ -249,3 +279,5 @@ if (savedId) $('riotId').value = savedId;
 renderSaved();
 loadRegions();
 loadNews();
+pollAppStatus();
+setInterval(pollAppStatus, 5000);
