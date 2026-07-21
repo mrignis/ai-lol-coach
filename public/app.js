@@ -1,3 +1,7 @@
+// Copying a Riot ID from a browser or chat carries invisible bidi/zero-width
+// marks. They don't show in the input but make the Riot lookup 404.
+const cleanId = s => String(s || '').replace(/[\u00AD\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').trim();
+
 const $ = id => document.getElementById(id);
 
 let loadTimer = null;
@@ -134,7 +138,7 @@ function escapeHtml(s) {
 
 $('form').addEventListener('submit', async e => {
   e.preventDefault();
-  const riotId = $('riotId').value.trim();
+  const riotId = cleanId($('riotId').value);
   const region = $('region').value;
   if (!riotId.includes('#')) return showError(t('errFormat'));
   localStorage.setItem('lolcoach_riotid', riotId); // remember last search
@@ -176,7 +180,7 @@ function renderSaved() {
 }
 
 function saveCurrent() {
-  const riotId = $('riotId').value.trim();
+  const riotId = cleanId($('riotId').value);
   const region = $('region').value;
   if (!riotId.includes('#')) return showError(t('errFormat'));
   const accts = getAccounts().filter(a => !(a.riotId.toLowerCase() === riotId.toLowerCase() && a.region === region));
@@ -192,7 +196,7 @@ $('saved').addEventListener('click', e => {
   if (load) {
     const a = getAccounts()[+load.dataset.i];
     if (a) {
-      $('riotId').value = a.riotId;
+      $('riotId').value = cleanId(a.riotId); // entries saved before the fix
       $('region').value = a.region;
       localStorage.setItem('lolcoach_region', a.region);
       $('form').requestSubmit();
@@ -286,8 +290,19 @@ document.addEventListener('langchange', () => {
 });
 
 // Prefill the last-used Riot ID so returning users don't retype it.
-const savedId = localStorage.getItem('lolcoach_riotid');
+const savedId = cleanId(localStorage.getItem('lolcoach_riotid'));
 if (savedId) $('riotId').value = savedId;
+
+// Scrub IDs stored before the invisible-character fix, so an old saved chip
+// doesn't keep failing with a name that looks perfectly correct.
+(() => {
+  const accts = getAccounts();
+  const cleaned = accts.map(a => ({ ...a, riotId: cleanId(a.riotId) }));
+  if (JSON.stringify(cleaned) !== JSON.stringify(accts)) {
+    setAccounts(cleaned);
+    renderSaved();
+  }
+})();
 
 renderSaved();
 loadRegions();
