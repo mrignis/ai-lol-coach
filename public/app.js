@@ -136,13 +136,11 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 }
 
-$('form').addEventListener('submit', async e => {
-  e.preventDefault();
-  const riotId = cleanId($('riotId').value);
-  const region = $('region').value;
-  if (!riotId.includes('#')) return showError(t('errFormat'));
-  localStorage.setItem('lolcoach_riotid', riotId); // remember last search
-  startLoading();
+let lastQuery = null; // {riotId, region} so a language switch can re-run it
+
+async function runAnalysis(riotId, region, { silent = false } = {}) {
+  lastQuery = { riotId, region };
+  if (!silent) startLoading();
   try {
     const res = await fetch('/api/analyze', {
       method: 'POST',
@@ -150,12 +148,20 @@ $('form').addEventListener('submit', async e => {
       body: JSON.stringify({ riotId, region, lang: getLang() }),
     });
     const data = await res.json();
-    // Prefer the localized message for a known code; fall back to server prose.
-    if (!res.ok) return showError(data.code ? t('err_' + data.code) : (data.error || t('errFail')));
+    if (!res.ok) { if (!silent) showError(data.code ? t('err_' + data.code) : (data.error || t('errFail'))); return; }
     render(data);
   } catch {
-    showError(t('errServer'));
+    if (!silent) showError(t('errServer'));
   }
+}
+
+$('form').addEventListener('submit', e => {
+  e.preventDefault();
+  const riotId = cleanId($('riotId').value);
+  const region = $('region').value;
+  if (!riotId.includes('#')) return showError(t('errFormat'));
+  localStorage.setItem('lolcoach_riotid', riotId); // remember last search
+  runAnalysis(riotId, region);
 });
 
 $('gamesToggle').addEventListener('click', () => {
@@ -283,10 +289,16 @@ function renderNews() {
 buildLangSelect('lang');
 applyStatic();
 document.addEventListener('langchange', () => {
-  if (lastData) render(lastData);
+  if (lastData) render(lastData); // instant: chips, summary, template coach
   renderSaved();
   renderNews();
   renderLauncherBar();
+  // The AI coach text was written in the previous language and render() can't
+  // re-translate it — re-run the analysis so the whole report matches. Matches
+  // are cached server-side, so this is basically one fresh AI call.
+  if (lastData && lastData.weaknesses.coachSource !== 'template' && lastQuery) {
+    runAnalysis(lastQuery.riotId, lastQuery.region, { silent: true });
+  }
 });
 
 // Prefill the last-used Riot ID so returning users don't retype it.
