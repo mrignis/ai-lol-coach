@@ -1,4 +1,5 @@
-import { config, platformToRegional, accountRegional } from './config.js';
+import { platformToRegional, accountRegional } from './config.js';
+import { riotTarget, canRiot } from './upstream.js';
 import * as cache from './cache.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -11,14 +12,16 @@ class RiotError extends Error {
 }
 
 // Single gated GET with 429 back-off and optional immutable disk cache.
-async function riotGet(url, { cacheKey } = {}) {
-  if (!config.riotKey) throw new RiotError('RIOT_API_KEY is not set in .env', 500);
+// region = routing value / platform; path = everything after the host.
+async function riotGet(region, path, { cacheKey } = {}) {
+  if (!canRiot) throw new RiotError('No Riot access configured (set PROXY_URL or RIOT_API_KEY)', 500);
   if (cacheKey) {
     const hit = await cache.get(cacheKey);
     if (hit) return hit;
   }
+  const { url, headers } = riotTarget(region, path);
   for (let attempt = 0; attempt < 4; attempt++) {
-    const res = await fetch(url, { headers: { 'X-Riot-Token': config.riotKey } });
+    const res = await fetch(url, { headers });
     if (res.status === 429) {
       const retry = Number(res.headers.get('retry-after') || 1);
       await sleep((retry + 0.2) * 1000);
@@ -42,17 +45,15 @@ async function riotGet(url, { cacheKey } = {}) {
 // ── ACCOUNT-V1: Riot ID → puuid ───────────────────────────────────────
 export async function getAccount(gameName, tagLine, platform) {
   const region = accountRegional(platform);
-  const url = `https://${region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/` +
-    `${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`;
-  return riotGet(url); // not cached — names can change puuid mapping rarely, keep fresh
+  const path = `riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`;
+  return riotGet(region, path); // not cached — names can change puuid mapping rarely, keep fresh
 }
 
 // ── LEAGUE-V4: puuid → rank (solo queue preferred) ────────────────────
 export async function getRank(puuid, platform) {
-  const url = `https://${platform}.api.riotgames.com/lol/league/v4/entries/by-puuid/${puuid}`;
   let entries;
   try {
-    entries = await riotGet(url);
+    entries = await riotGet(platform, `lol/league/v4/entries/by-puuid/${puuid}`);
   } catch (e) {
     if (e.code === 404) return null;
     throw e;
@@ -74,12 +75,12 @@ export async function getRank(puuid, platform) {
 // ── MATCH-V5: puuid → last N ranked match IDs ─────────────────────────
 export async function getMatchIds(puuid, platform, count = 20) {
   const region = platformToRegional(platform);
-  const base = `https://${region}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids`;
-  let ids = await riotGet(`${base}?type=ranked&start=0&count=${count}`);
+  const base = `lol/match/v5/matches/by-puuid/${puuid}/ids`;
+  let ids = await riotGet(region, `${base}?type=ranked&start=0&count=${count}`);
   let queueScope = 'ranked';
   if (!ids || ids.length === 0) {
     // New / unranked account: fall back to any queue so the player still gets a read.
-    ids = await riotGet(`${base}?start=0&count=${count}`);
+    ids = await riotGet(region, `${base}?start=0&count=${count}`);
     queueScope = 'any';
   }
   return { ids: ids || [], queueScope };
@@ -88,8 +89,7 @@ export async function getMatchIds(puuid, platform, count = 20) {
 // ── MATCH-V5: matchId → full match (cached, immutable) ────────────────
 export async function getMatch(matchId, platform) {
   const region = platformToRegional(platform);
-  const url = `https://${region}.api.riotgames.com/lol/match/v5/matches/${matchId}`;
-  return riotGet(url, { cacheKey: `match_${matchId}` });
+  return riotGet(region, `lol/match/v5/matches/${matchId}`, { cacheKey: `match_${matchId}` });
 }
 
 // Fetch matches with light throttling to stay well under dev rate limits.

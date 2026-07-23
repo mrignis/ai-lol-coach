@@ -33,6 +33,12 @@ export const userEnvPath = process.env.APPDATA
 export const config = {
   port: Number(process.env.PORT) || 3000,
   riotKey: process.env.RIOT_API_KEY || '',
+  // When set, ALL Riot/Groq/Gemini calls go through this Cloudflare Worker and
+  // the app needs no upstream keys of its own — only the shared app token. The
+  // real keys live in the worker's secrets. See worker/worker.js.
+  proxy: (process.env.PROXY_URL && process.env.PROXY_TOKEN)
+    ? { url: process.env.PROXY_URL.replace(/\/+$/, ''), token: process.env.PROXY_TOKEN }
+    : null,
   llm: {
     // groq | gemini | none. Ollama and Anthropic were removed 2026-07-19:
     // the Ollama cloud model was retired (410) and Anthropic never had a key.

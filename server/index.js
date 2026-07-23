@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { config, PLATFORMS, userEnvPath, envReport } from './config.js';
+import { canRiot, canGroq, canGemini } from './upstream.js';
 import { analyzePlayer } from './analyze.js';
 import { fetchLiveData, buildLiveResponse, liveCoachResponse } from './live.js';
 import { visionTip } from './llm.js';
@@ -25,9 +26,12 @@ app.use(express.static(path.join(__dirname, '..', 'public'), {
 app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
-    riotKey: Boolean(config.riotKey),
-    aiKey: Boolean(config.llm.groqKey || config.llm.geminiKey),
-    llm: config.llm.provider,
+    // In proxy mode the worker holds every key, so the app is fully configured
+    // with no local keys at all.
+    proxy: Boolean(config.proxy),
+    riotKey: canRiot,
+    aiKey: canGroq || canGemini,
+    llm: config.proxy ? 'proxy' : config.llm.provider,
     // Where to paste keys — an installed build ships none, and without this
     // the UI can only say "missing" without saying where to fix it.
     envPath: userEnvPath,
@@ -55,7 +59,7 @@ app.post('/api/analyze', async (req, res) => {
   if (!riotId || !region) {
     return res.status(400).json({ error: 'riotId and region are required' });
   }
-  if (!config.riotKey) {
+  if (!canRiot) {
     return res.status(500).json({ error: 'Server has no RIOT_API_KEY set. Add it to .env and restart.' });
   }
   try {

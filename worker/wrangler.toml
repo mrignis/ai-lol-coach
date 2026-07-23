@@ -1,0 +1,14 @@
+name = "lol-coach"
+main = "worker.js"
+compatibility_date = "2024-12-01"
+
+# Deploy:  cd worker && wrangler deploy
+#
+# Set secrets once (values are stored on Cloudflare, never in this repo):
+#   wrangler secret put APP_TOKEN        ← shared token the desktop app sends
+#   wrangler secret put RIOT_API_KEY     ← developer.riotgames.com (dev key: refresh daily)
+#   wrangler secret put GROQ_API_KEY     ← console.groq.com
+#   wrangler secret put GEMINI_API_KEY   ← aistudio.google.com
+#
+# After deploy the worker URL is https://lol-coach.<your-subdomain>.workers.dev
+# Put that URL + the APP_TOKEN into the app's .env (PROXY_URL / PROXY_TOKEN).

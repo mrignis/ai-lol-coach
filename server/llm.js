@@ -1,5 +1,6 @@
 import { config } from './config.js';
 import { METRICS } from './benchmarks.js';
+import { groqTarget, geminiTarget, canGroq, canGemini } from './upstream.js';
 
 const fmt = (key, v) => (METRICS[key] ? METRICS[key].fmt(v) : String(v));
 
@@ -72,9 +73,10 @@ function templateCoach(weaknesses) {
 }
 
 async function callGroq({ system, user }) {
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const { url, headers } = groqTarget();
+  const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.llm.groqKey}` },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({
       model: config.llm.groqModel,
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
@@ -93,10 +95,10 @@ async function callGroq({ system, user }) {
 // Gemini with Google Search grounding — used for meta/guide lookups so the
 // bot can cite CURRENT-patch builds instead of stale training data.
 async function callGeminiGrounded({ system, user }) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.llm.geminiModel}:generateContent?key=${config.llm.geminiKey}`;
+  const { url, headers } = geminiTarget(config.llm.geminiModel);
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: 'user', parts: [{ text: user }] }],
@@ -115,7 +117,7 @@ async function callGeminiGrounded({ system, user }) {
 // Web-grounded answer with graceful degradation: search-backed Gemini first,
 // plain chain second (still useful — just without live-patch freshness).
 export async function groundedAnswer({ system, user }) {
-  if (config.llm.geminiKey) {
+  if (canGemini) {
     try {
       const text = await callGeminiGrounded({ system, user });
       if (text) return { text, source: 'gemini-search' };
@@ -129,10 +131,10 @@ export async function groundedAnswer({ system, user }) {
 
 // Gemini free tier — text fallback and the only vision provider.
 async function callGemini({ system, user }) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.llm.geminiModel}:generateContent?key=${config.llm.geminiKey}`;
+  const { url, headers } = geminiTarget(config.llm.geminiModel);
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: 'user', parts: [{ text: user }] }],
@@ -159,8 +161,8 @@ function providerChain() {
   const chain = [];
   for (const p of order) {
     if (chain.includes(p) || !PROVIDER_CALLS[p]) continue;
-    if (p === 'groq' && !config.llm.groqKey) continue;
-    if (p === 'gemini' && !config.llm.geminiKey) continue;
+    if (p === 'groq' && !canGroq) continue;
+    if (p === 'gemini' && !canGemini) continue;
     chain.push(p);
   }
   return chain;
@@ -284,10 +286,10 @@ async function geminiVision({ system, user, imageBase64, minimapBase64 }) {
   const parts = [{ inline_data: { mime_type: 'image/jpeg', data: imageBase64 } }];
   if (minimapBase64) parts.push({ inline_data: { mime_type: 'image/jpeg', data: minimapBase64 } });
   parts.push({ text: user });
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.llm.geminiModel}:generateContent?key=${config.llm.geminiKey}`;
+  const { url, headers } = geminiTarget(config.llm.geminiModel);
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: 'user', parts }],
@@ -305,9 +307,10 @@ async function groqVision({ system, user, imageBase64, minimapBase64 }) {
   const content = [{ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }];
   if (minimapBase64) content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${minimapBase64}` } });
   content.push({ type: 'text', text: user });
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const { url, headers } = groqTarget();
+  const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.llm.groqKey}` },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({
       model: config.llm.groqVisionModel,
       messages: [{ role: 'system', content: system }, { role: 'user', content }],
@@ -336,8 +339,8 @@ export async function visionTip({ imageBase64, minimapBase64, me, gameTimeSec, r
 
   // Same chain idea as text tips: Gemini first, Groq's multimodal Llama-4 next.
   const attempts = [];
-  if (config.llm.geminiKey) attempts.push(['gemini', geminiVision]);
-  if (config.llm.groqKey && config.llm.groqVisionModel) attempts.push(['groq', groqVision]);
+  if (canGemini) attempts.push(['gemini', geminiVision]);
+  if (canGroq && config.llm.groqVisionModel) attempts.push(['groq', groqVision]);
   let lastErr = null;
   for (const [name, fn] of attempts) {
     try {

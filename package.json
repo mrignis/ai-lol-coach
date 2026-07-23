@@ -35,7 +35,10 @@
       "build/icon.png",
       "package.json"
     ],
-    "extraResources": [{ "from": ".env.example", "to": ".env.example" }],
+    "extraResources": [
+      { "from": ".env.example", "to": ".env.example" },
+      { "from": "build-config/proxy.env", "to": ".env" }
+    ],
     "win": {
       "target": "nsis",
       "icon": "build/icon.png"

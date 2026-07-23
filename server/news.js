@@ -1,4 +1,4 @@
-import { config } from './config.js';
+import { riotTarget, canRiot } from './upstream.js';
 import * as cache from './cache.js';
 
 // "News" without scraping: official, reliable sources only.
@@ -28,12 +28,10 @@ export async function getNews(platform) {
   const patch = await currentPatch();
 
   let rotation = [];
-  if (config.riotKey) {
+  if (canRiot) {
     try {
-      const rot = await (await fetch(
-        `https://${platform}.api.riotgames.com/lol/platform/v3/champion-rotations`,
-        { headers: { 'X-Riot-Token': config.riotKey } }
-      )).json();
+      const { url, headers } = riotTarget(platform, 'lol/platform/v3/champion-rotations');
+      const rot = await (await fetch(url, { headers })).json();
       // Riot returns `sr` (Summoner's Rift) now; older payloads used `freeChampionIds`.
       const ids = rot.sr || rot.freeChampionIds || [];
       if (Array.isArray(ids) && ids.length) {
