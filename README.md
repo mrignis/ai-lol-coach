@@ -33,75 +33,49 @@ npm start
 
 ---
 
-## 🔑 API keys — the important part
+## 🔑 API keys
 
-The app ships with **no keys** (an installer must never carry them), so on the
-first run it creates an empty settings file for you and the launcher shows a
-banner telling you exactly where it is.
+**Installed app: none needed.** The installer talks to a hosted Cloudflare
+Worker that holds the Riot / Groq / Gemini keys, so analysis, AI coaching, news
+and the widget all work out of the box. See **INSTALL.md** (or **INSTALL_UA.md**).
 
-**Where to put the keys**
+You only touch keys if you run your own backend — two ways:
 
-| How you run it | File to edit |
+**A. Your own keys directly** (from source, or override the installed app).
+Edit the `.env`:
+
+| How you run it | File |
 |---|---|
 | Installed app | `%APPDATA%\lol-coach\.env` |
 | From source | `.env` in the project folder (copy `.env.example`) |
 
-Paste it into Explorer's address bar to open the folder:
+- `RIOT_API_KEY` — https://developer.riotgames.com (dev key expires every 24h;
+  a free **Personal API Key** doesn't).
+- `GROQ_API_KEY` — https://console.groq.com (free, ~1000/day, the main brain).
+- `GEMINI_API_KEY` — https://aistudio.google.com/apikey (fallback + screen
+  vision + build lookups).
 
-```
-%APPDATA%\lol-coach
-```
+Restart the app after editing `.env`.
 
-Open `.env` in Notepad and fill in the values below.
+**B. Your own proxy** (hide keys behind your own worker — how the shipped build
+works). Deploy `worker/`:
 
-### 1. Riot API key — required
-
-Without it the app can't read your matches, rank, or the champion rotation.
-
-1. Go to **https://developer.riotgames.com** and sign in with your Riot account.
-2. On the dashboard find **DEVELOPMENT API KEY**.
-3. Tick the reCAPTCHA, press **REGENERATE API KEY**.
-4. Copy the key (starts with `RGAPI-`) and put it in `.env`:
-
-```env
-RIOT_API_KEY=RGAPI-your-key-here
-```
-
-> ⚠️ **A development key expires every 24 hours.** You have to regenerate it and
-> paste it again each day. To avoid that, apply for a free **Personal API Key**
-> on the same site (Register Product → Personal) — it doesn't expire.
-
-### 2. Groq key — required for AI coaching
-
-Free, no card, ~1000 requests/day. This is the main brain.
-
-1. Go to **https://console.groq.com** and sign in (Google works).
-2. Left menu → **API Keys** → **Create API Key**.
-3. Copy it (starts with `gsk_`) — it's shown only once — and add:
-
-```env
-GROQ_API_KEY=gsk_your-key-here
+```bash
+cd worker
+wrangler secret put APP_TOKEN        # shared token the app sends
+wrangler secret put RIOT_API_KEY
+wrangler secret put GROQ_API_KEY
+wrangler secret put GEMINI_API_KEY
+wrangler deploy
 ```
 
-### 3. Gemini key — optional, but adds screen vision
+Then set `PROXY_URL` + `PROXY_TOKEN` in the app's `.env` (or bundle them via
+`build-config/proxy.env`, gitignored). The worker restricts Riot to a path
+allowlist, requires the app token, and rate-limits per IP — so the raw keys
+never leave Cloudflare and the repo stays key-free.
 
-Used as an AI fallback **and** for reading your screen during a game (minimap,
-enemy positions) and for looking up current-patch builds.
-
-1. Go to **https://aistudio.google.com/apikey** → **Create API key**.
-2. Add it:
-
-```env
-GEMINI_API_KEY=AIza-your-key-here
-```
-
-**Restart the app** after editing `.env`.
-
-### What works without any keys
-
-The in-game widget still runs: live KDA, CS/min, vision, gold, objective
-timers and rule-based nudges. That part uses League's **local** Live Client
-Data API (`127.0.0.1:2999`) and needs no key and no internet.
+> The in-game widget needs **no key at all** either way — it reads League's
+> local Live Client Data API (`127.0.0.1:2999`).
 
 ---
 
@@ -159,6 +133,8 @@ npm run dist    # -> dist/AI LoL Coach Setup 0.1.0.exe
 | Benchmarks | `server/benchmarks.js` |
 | In-game state, nudges, phases | `server/live.js` |
 | AI providers + prompts (Groq → Gemini → template) | `server/llm.js` |
+| Upstream router (proxy vs direct keys) | `server/upstream.js` |
+| Key-hiding proxy (Cloudflare Worker) | `worker/worker.js` |
 | Desktop shell, tray, overlay, screen capture | `electron/main.js` |
 | UI + 13 languages | `public/` |
 
