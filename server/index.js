@@ -100,7 +100,9 @@ app.get('/api/live', async (req, res) => {
 // AI live recommendation — LLM reads the current game state (polled ~60s).
 // Latest screen-based tip. The Electron overlay posts a screenshot every ~60s;
 // we analyse it eagerly and the widget picks the result up on its next poll.
-let visionState = { tip: null, ts: 0 };
+// The language is part of the cache identity: a tip generated while another
+// language was selected must never be replayed into a Ukrainian UI.
+let visionState = { tip: null, ts: 0, lang: 'en' };
 let textTipState = { data: null, ts: 0, lang: 'en' };
 let lastCoachLang = 'en'; // vision calls happen out-of-band, so remember the UI language
 
@@ -109,7 +111,8 @@ app.get('/api/live-coach', async (req, res) => {
   lastCoachLang = req.query.lang || lastCoachLang;
   try {
     // A fresh vision tip (screen + state) beats a state-only tip.
-    if (visionState.tip && Date.now() - visionState.ts < 90000) {
+    const wantLang = req.query.lang || 'en';
+    if (visionState.tip && visionState.lang === wantLang && Date.now() - visionState.ts < 90000) {
       return res.json({ inGame: true, ready: true, tip: visionState.tip, source: 'vision' });
     }
     // Text tips cost an LLM call each — cache 45s so the 30s widget poll
@@ -191,7 +194,7 @@ app.post('/api/vision', async (req, res) => {
       ctx: base.ctx,
       lang: lastCoachLang,
     });
-    if (tip) visionState = { tip, ts: Date.now() };
+    if (tip) visionState = { tip, ts: Date.now(), lang: lastCoachLang };
     res.json({ ok: !!tip });
   } catch (e) {
     if (e.code !== 'NOGAME') console.error('[vision]', e.message);

@@ -130,11 +130,28 @@ export async function gameContext(data, me) {
     ? Math.min(100, Math.round(((me.scores.kills + me.scores.assists) / teamKillsTotal) * 100))
     : null;
 
+  // ── state that makes advice concrete instead of generic ─────────────
+  // Dead enemies with timers are the single most actionable fact in the game:
+  // they define the window to take an objective. Items by NAME stop the model
+  // recommending something already in the inventory (or hallucinating a build).
+  const itemNames = p => (p.items || []).map(i => i.displayName).filter(Boolean);
+  const deadEnemies = foes
+    .filter(p => p.isDead)
+    .map(p => ({ champion: p.championName, respawnIn: Math.round(p.respawnTimer || 0) }));
+  const pct = (cur, max) => (max > 0 ? Math.round((cur / max) * 100) : null);
+  const ab = data.activePlayer?.abilities || {};
+
   return {
     goldDiff: Math.round(myGold - foeGold),
     teamItemGold: myGold,
     enemyItemGold: foeGold,
     enemyDamage: { ad: adCount, ap: apCount },
+    deadEnemies,
+    myHpPct: pct(stats.currentHealth, stats.maxHealth),
+    myResourcePct: pct(stats.resourceValue, stats.resourceMax),
+    myItems: itemNames(me),
+    ultLevel: ab.R?.abilityLevel || 0,
+    enemyBuilds: foes.map(p => ({ champion: p.championName, items: itemNames(p) })),
     myArmor: Math.round(stats.armor || 0),
     myMagicResist: Math.round(stats.magicResist || 0),
     myKP,

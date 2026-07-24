@@ -212,7 +212,18 @@ function buildContextLines(me, gameTimeSec, role, ctx) {
       `CS ${me.cs} (${(me.cs / min).toFixed(1)}/min), vision ${me.wardScore}, ${me.gold}g unspent.`,
     `Clock: ${Math.round(gameTimeSec / 60)} min (${phase} game).`,
   ];
+  // A champion that is dead right now must never be described as a live
+  // threat, so mark the status everywhere the name appears.
+  const deadMap = new Map((ctx?.deadEnemies || []).map(e => [e.champion, e.respawnIn]));
+  const mark = champ => (deadMap.has(champ) ? `${champ} (DEAD, back in ${deadMap.get(champ)}s)` : champ);
+
   if (ctx) {
+    // Highest-value fact first: a dead enemy is a timed window to take something.
+    if (ctx.deadEnemies?.length) {
+      lines.push('*** WINDOW OPEN — DEAD ENEMIES: ' + ctx.deadEnemies
+        .map(e => `${e.champion} back in ${e.respawnIn}s`).join(', ') +
+        '. Your advice MUST use this window (objective, tower, deep vision) and say what to take before they respawn. ***');
+    }
     lines.push(`Score: your team ${ctx.teamKills} kills vs enemy ${ctx.enemyKills}.`);
     lines.push(`Objectives — dragons ${ctx.dragons.mine}:${ctx.dragons.theirs}, barons ${ctx.barons.mine}:${ctx.barons.theirs}, ` +
       `turrets ${ctx.turrets.mine}:${ctx.turrets.theirs}, inhibs ${ctx.inhibs.mine}:${ctx.inhibs.theirs}.`);
@@ -221,7 +232,7 @@ function buildContextLines(me, gameTimeSec, role, ctx) {
     if (ctx.baronUpIn <= 60) lines.push(`Baron is up or spawning in ~${Math.max(0, ctx.baronUpIn)}s.`);
     if (ctx.isDead) lines.push(`YOU ARE DEAD — respawn in ${ctx.respawnTimer}s.`);
     if (ctx.enemyAvgLevel) lines.push(`Levels: you ${ctx.myLevel} vs enemy average ${ctx.enemyAvgLevel}.`);
-    if (ctx.fedEnemy) lines.push(`Biggest threat: ${ctx.fedEnemy.champion} ${ctx.fedEnemy.k}/${ctx.fedEnemy.d}/${ctx.fedEnemy.a}.`);
+    if (ctx.fedEnemy) lines.push(`Biggest threat: ${mark(ctx.fedEnemy.champion)} ${ctx.fedEnemy.k}/${ctx.fedEnemy.d}/${ctx.fedEnemy.a}.`);
     if (typeof ctx.goldDiff === 'number') {
       const side = ctx.goldDiff >= 0 ? 'ahead' : 'behind';
       lines.push(`Item gold: your team is ${Math.abs(ctx.goldDiff)}g ${side} (${ctx.teamItemGold} vs ${ctx.enemyItemGold}).`);
@@ -230,10 +241,26 @@ function buildContextLines(me, gameTimeSec, role, ctx) {
       lines.push(`Enemy damage split: ${ctx.enemyDamage.ad} AD / ${ctx.enemyDamage.ap} AP. ` +
         `Your resists: ${ctx.myArmor} armor, ${ctx.myMagicResist} MR — recommend a defensive item if they are low for this stage.`);
     }
-    if (ctx.nemesis) lines.push(`${ctx.nemesis.champion} has killed you ${ctx.nemesis.times} times this game.`);
+    if (ctx.nemesis) lines.push(`${mark(ctx.nemesis.champion)} has killed you ${ctx.nemesis.times} times this game.`);
     if (ctx.myKP != null) lines.push(`Your kill participation: ${ctx.myKP}%.`);
+
+    // Concrete state — without these the model can only give generic macro,
+    // and it tends to invent items the player already owns.
+    if (ctx.myHpPct != null) {
+      lines.push(`Your health: ${ctx.myHpPct}%` +
+        (ctx.myResourcePct != null ? `, resource ${ctx.myResourcePct}%` : '') +
+        (ctx.ultLevel ? ', ultimate is learned' : ', no ultimate yet') + '.');
+    }
+    if (ctx.myItems?.length) {
+      lines.push(`Your items: ${ctx.myItems.join(', ')}. NEVER recommend an item already in this list.`);
+    }
+    if (ctx.enemyBuilds?.length) {
+      lines.push('Enemy builds: ' + ctx.enemyBuilds
+        .filter(e => e.items.length)
+        .map(e => `${e.champion} [${e.items.join(', ')}]`).join('; ') + '.');
+    }
     if (ctx.enemies?.length) {
-      lines.push('Enemy team: ' + ctx.enemies.map(p => `${p.champion} ${p.k}/${p.d}/${p.a} lvl${p.lvl}`).join(', ') + '.');
+      lines.push('Enemy team: ' + ctx.enemies.map(p => `${mark(p.champion)} ${p.k}/${p.d}/${p.a} lvl${p.lvl}`).join(', ') + '.');
     }
     if (ctx.allies?.length) {
       lines.push('Your team: ' + ctx.allies.map(p => `${p.champion} ${p.k}/${p.d}/${p.a} lvl${p.lvl}`).join(', ') + '.');

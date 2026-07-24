@@ -169,6 +169,13 @@ if (new URLSearchParams(location.search).get('overlay') === '1') {
 buildLangSelect('lang');
 applyStatic();
 document.addEventListener('langchange', () => {
+  // Drop AI text written in the previous language — otherwise the panel shows
+  // a mix (fresh tip in the new language above stale ones in the old).
+  aiHistory = [];
+  lastAi = null;
+  $('aiTip').textContent = t('aiWait');
+  matchupLoadedFor = null;      // re-fetch the matchup brief in the new language
+  $('cardMatchup').hidden = true;
   if (lastLive) { render(lastLive); loadAiTip(); }
   else poll();
 });
