@@ -230,7 +230,12 @@ export function buildNudges(me, role, gameTime, events, gold, bucket = 'mid', ct
   // "don't get caught", so it's gated by phase.
   const csPerMin = me.scores.creepScore / min;
   if (phase !== 'late' && gameTime > 180 && role !== 'UTILITY' && csPerMin < bench.csPerMin * 0.85) {
-    nudges.push({ level: 'warn', code: 'csPace', params: { cs: csPerMin.toFixed(1), target: bench.csPerMin } });
+    // A jungler's CS comes from camps, so "grab the next wave" is wrong for them.
+    nudges.push({
+      level: 'warn',
+      code: role === 'JUNGLE' ? 'campPace' : 'csPace',
+      params: { cs: csPerMin.toFixed(1), target: bench.csPerMin },
+    });
   }
   const visPerMin = (me.scores.wardScore || 0) / min;
   if (gameTime > 480 && visPerMin < bench.visPerMin * 0.7) {
@@ -248,8 +253,15 @@ export function buildNudges(me, role, gameTime, events, gold, bucket = 'mid', ct
   }
 
   // Phase-appropriate fallback so the widget is never empty or off-topic.
+  // The early-game default used to say "focus on last-hitting", which is wrong
+  // for a jungler (camps) and meaningless for a support (no farm at all).
   if (!nudges.length) {
-    nudges.push({ level: 'info', code: phase === 'late' ? 'lateGroup' : phase === 'mid' ? 'midFocus' : 'earlyFocus' });
+    let code = phase === 'late' ? 'lateGroup' : phase === 'mid' ? 'midFocus' : 'earlyFocus';
+    if (phase === 'early') {
+      if (role === 'JUNGLE') code = 'earlyFocusJungle';
+      else if (role === 'UTILITY') code = 'earlyFocusSupport';
+    }
+    nudges.push({ level: 'info', code });
   }
 
   return nudges.slice(0, 3);

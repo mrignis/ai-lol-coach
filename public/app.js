@@ -105,7 +105,7 @@ function render(data) {
 
   // Coaching text — localize the offline template; LLM output is already localized.
   const coachText = data.weaknesses.coachSource === 'template'
-    ? templateCoach(data.weaknesses.gaps)
+    ? templateCoach(data.weaknesses.gaps, data.weaknesses.role || s.mainRole)
     : data.weaknesses.coachText;
   $('coachText').innerHTML = escapeHtml(coachText)
     .replace(/(\d+(?:\.\d+)?%?)/g, '<span class="num">$1</span>');

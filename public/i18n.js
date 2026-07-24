@@ -421,6 +421,7 @@ const METRIC_LABELS = {
 const TIPS = {
   en: {
     csPerMin: 'Set a CS target and last-hit through the first back — aim not to miss minions while trading.',
+    csPerMinJungle: 'Clear camps as they respawn — a full clear between plays is free gold you keep leaving in the jungle.',
     visPerMin: 'Use both trinket charges whenever they are up and clear one enemy ward per recall.',
     kp: 'Group with your team for objectives — leave lane on a slow-push and join fights before they start.',
     deaths: 'Before each play ask "what kills me here?" and respect enemy cooldowns; ward before you push.',
@@ -429,6 +430,7 @@ const TIPS = {
   },
   uk: {
     csPerMin: 'Постав собі ціль по фарму й добивай міньйонів до першого повернення — не втрачай їх навіть під час розмінів.',
+    csPerMinJungle: 'Забирай кемпи на респавні — фулклір між діями це безкоштовне золото, яке ти лишаєш у лісі.',
     visPerMin: 'Використовуй обидва заряди тотема, щойно вони готові, і прибирай хоча б один ворожий вард за кожне повернення.',
     kp: 'Збирайся з командою на об’єкти: виходь з лінії на повільному пуші й приєднуйся до бійок ще до їхнього початку.',
     deaths: 'Перед кожним розміном питай себе «що мене тут може вбити?», зважай на кулдауни ворога і став вард, перш ніж пушити.',
@@ -437,6 +439,7 @@ const TIPS = {
   },
   fr: {
     csPerMin: 'Fixe un objectif de CS et last-hit jusqu’au premier retour — ne rate pas de sbires en échangeant.',
+    csPerMinJungle: 'Reprends les camps dès leur réapparition — un full clear entre les actions, c’est de l’or gratuit.',
     visPerMin: 'Utilise les deux charges de balise dès qu’elles sont prêtes et retire une ward ennemie par retour.',
     kp: 'Regroupe-toi pour les objectifs — quitte ta voie sur un slow-push et rejoins les combats avant qu’ils commencent.',
     deaths: 'Avant chaque action, demande « qu’est-ce qui me tue ici ? » et respecte les cooldowns ; ward avant de push.',
@@ -445,6 +448,7 @@ const TIPS = {
   },
   de: {
     csPerMin: 'Setz dir ein CS-Ziel und lasthitte bis zum ersten Backen — verpasse keine Vasallen beim Trade.',
+    csPerMinJungle: 'Nimm Camps beim Respawn — ein Full-Clear zwischen Plays ist kostenloses Gold.',
     visPerMin: 'Nutze beide Trinket-Ladungen, sobald bereit, und räume pro Rückkehr eine gegnerische Ward.',
     kp: 'Gruppiere dich für Ziele — verlasse die Lane bei einem Slow-Push und geh in Kämpfe, bevor sie starten.',
     deaths: 'Frag vor jeder Aktion „Was tötet mich hier?“ und respektiere Cooldowns; warde vor dem Pushen.',
@@ -453,6 +457,7 @@ const TIPS = {
   },
   es: {
     csPerMin: 'Ponte un objetivo de CS y last-hit hasta el primer recall — no pierdas súbditos al intercambiar.',
+    csPerMinJungle: 'Coge los campamentos al reaparecer — un full clear entre jugadas es oro gratis.',
     visPerMin: 'Usa ambas cargas del centinela en cuanto estén listas y limpia una ward enemiga por recall.',
     kp: 'Agrúpate para los objetivos — sal de línea en slow-push y únete a las peleas antes de que empiecen.',
     deaths: 'Antes de cada jugada pregunta "¿qué me mata aquí?" y respeta los cooldowns; pon ward antes de empujar.',
@@ -461,6 +466,7 @@ const TIPS = {
   },
   pl: {
     csPerMin: 'Ustal cel CS i dobijaj miniony do pierwszego powrotu — nie trać stworów podczas wymian.',
+    csPerMinJungle: 'Zbieraj obozy przy odnowieniu — full clear między akcjami to darmowe złoto.',
     visPerMin: 'Używaj obu ładunków totemu, gdy są gotowe, i usuwaj jeden wrogi ward na powrót.',
     kp: 'Grupuj się przy celach — schodź z linii przy slow-pushu i dołączaj do walk, zanim się zaczną.',
     deaths: 'Przed każdą akcją zapytaj „co mnie tu zabije?” i szanuj cooldowny; stawiaj ward przed pushem.',
@@ -469,6 +475,7 @@ const TIPS = {
   },
   pt: {
     csPerMin: 'Defina uma meta de CS e faça last-hit até o primeiro recall — não perca minions ao trocar.',
+    csPerMinJungle: 'Pegue os camps ao renascerem — um full clear entre jogadas é ouro grátis.',
     visPerMin: 'Use as duas cargas do sentinela assim que prontas e limpe uma ward inimiga por recall.',
     kp: 'Agrupe para os objetivos — saia da rota num slow-push e entre nas lutas antes de começarem.',
     deaths: 'Antes de cada jogada pergunte "o que me mata aqui?" e respeite os cooldowns; warde antes de empurrar.',
@@ -477,6 +484,7 @@ const TIPS = {
   },
   ru: {
     csPerMin: 'Поставь цель по КС и добивай миньонов до первого возврата — не теряй крипов при разменах.',
+    csPerMinJungle: 'Забирай кемпы на респавне — фулклир между действиями это бесплатное золото.',
     visPerMin: 'Используй оба заряда тотема, как только готовы, и снимай один вражеский вард за возврат.',
     kp: 'Собирайся с командой на объекты — уходи с линии на медленном пуше и вступай в драки до их начала.',
     deaths: 'Перед каждым действием спроси «что меня здесь убьёт?» и уважай кулдауны; вардь перед пушем.',
@@ -485,6 +493,7 @@ const TIPS = {
   },
   tr: {
     csPerMin: 'Bir CS hedefi koy ve ilk dönüşe kadar last-hit yap — takas ederken minyon kaçırma.',
+    csPerMinJungle: 'Kampları doğdukça al — hamleler arası full clear bedava altındır.',
     visPerMin: 'Totem şarjlarının ikisini de hazır olunca kullan ve her dönüşte bir düşman wardı temizle.',
     kp: 'Hedefler için toplan — slow-push’ta koridordan çık ve dövüşlere başlamadan katıl.',
     deaths: 'Her hamleden önce "beni burada ne öldürür?" diye sor ve cooldownlara saygı duy; itmeden önce ward.',
@@ -493,6 +502,7 @@ const TIPS = {
   },
   ko: {
     csPerMin: 'CS 목표를 정하고 첫 귀환까지 막타를 챙겨라 — 교전 중에도 미니언을 놓치지 마라.',
+    csPerMinJungle: '리스폰되는 캠프를 챙겨라 — 플레이 사이의 풀클리어는 공짜 골드다.',
     visPerMin: '와드 충전이 차면 두 개 모두 쓰고 귀환마다 적 와드 하나를 지워라.',
     kp: '오브젝트를 위해 모여라 — 슬로우 푸시로 라인을 비우고 한타가 시작되기 전에 합류하라.',
     deaths: '플레이 전에 "여기서 뭐가 날 죽이지?"를 묻고 적 쿨다운을 존중하라; 밀기 전에 와드하라.',
@@ -501,6 +511,7 @@ const TIPS = {
   },
   zh: {
     csPerMin: '设定补刀目标，第一次回城前把兵补好——换血时也别漏兵。',
+    csPerMinJungle: '野怪刷新就去打——两次行动之间清完野区，就是白送的金币。',
     visPerMin: '饰品充能一好就用掉两次，每次回城清掉一个敌方眼。',
     kp: '为资源集合——用慢推离线，在团战开始前赶到。',
     deaths: '每次行动前问“这里什么会杀我？”，尊重敌方技能CD；推线前先做视野。',
@@ -509,6 +520,7 @@ const TIPS = {
   },
   ja: {
     csPerMin: 'CS目標を決め、最初のリコールまでラストヒットを取る——トレード中もミニオンを逃さない。',
+    csPerMinJungle: 'リスポーンしたキャンプを回収せよ——プレー間のフルクリアはタダのゴールドだ。',
     visPerMin: 'トリンケットは2チャージ溜まったら使い、リコールごとに敵ワードを1つ消す。',
     kp: 'オブジェクトのため集合——スロープッシュでレーンを離れ、戦闘開始前に合流する。',
     deaths: '動く前に「ここで何に殺される?」と問い、敵のCDを尊重；プッシュ前にワードを置く。',
@@ -517,6 +529,7 @@ const TIPS = {
   },
   vi: {
     csPerMin: 'Đặt mục tiêu lính và last-hit đến lần về đầu tiên — đừng bỏ lỡ lính khi trao đổi.',
+    csPerMinJungle: 'Ăn bãi khi hồi sinh — full clear giữa các pha là vàng miễn phí bạn đang bỏ lại trong rừng.',
     visPerMin: 'Dùng cả hai lượt mắt khi sẵn sàng và dọn một mắt địch mỗi lần về nhà.',
     kp: 'Tụ tập vì mục tiêu — rời đường khi đẩy chậm và tham gia giao tranh trước khi nó bắt đầu.',
     deaths: 'Trước mỗi pha, tự hỏi "cái gì giết mình ở đây?" và tôn trọng hồi chiêu địch; cắm mắt trước khi đẩy.',
@@ -905,6 +918,78 @@ const NUDGES_DEEP = {
 };
 for (const l in NUDGES_DEEP) Object.assign(NUDGES[l], NUDGES_DEEP[l]);
 
+// Role-correct advice. A jungler farms CAMPS (not lane waves) and a support
+// farms nothing at all, so "grab the next wave" / "focus on last-hitting" is
+// actively wrong for them — these variants replace it.
+const NUDGES_ROLE = {
+  en: {
+    campPace: 'Camp clear is slow — {cs}/min vs ~{target}. Take your camps as they respawn instead of leaving them up.',
+    earlyFocusJungle: 'Early game: full-clear your camps, track the enemy jungler, and gank a lane that has CC.',
+    earlyFocusSupport: 'Early game: ward the lane entrances, keep your ADC healthy, and roam mid when your wave is shoved.',
+  },
+  uk: {
+    campPace: 'Повільно фармиш ліс — {cs}/хв замість ~{target}. Забирай кемпи, щойно вони респавняться.',
+    earlyFocusJungle: 'Ранній етап: роби фулклір, слідкуй за ворожим лісником і ганкай лінію, де є контроль.',
+    earlyFocusSupport: 'Ранній етап: вардь входи в лінію, тримай АДК при здоров’ї і роум на мід, коли хвиля запушена.',
+  },
+  fr: {
+    campPace: 'Clear de camps lent — {cs}/min contre ~{target}. Reprends tes camps dès qu’ils réapparaissent.',
+    earlyFocusJungle: 'Début de partie : full clear tes camps, track le jungler ennemi et gank une voie avec du CC.',
+    earlyFocusSupport: 'Début de partie : ward les entrées, garde ton ADC en vie et roam mid quand ta vague est poussée.',
+  },
+  de: {
+    campPace: 'Camp-Clear ist langsam — {cs}/min statt ~{target}. Nimm deine Camps, sobald sie respawnen.',
+    earlyFocusJungle: 'Frühphase: Full-Clear deiner Camps, tracke den gegnerischen Jungler und ganke eine Lane mit CC.',
+    earlyFocusSupport: 'Frühphase: warde die Lane-Eingänge, halte deinen ADC gesund und roame Mid, wenn die Welle gepusht ist.',
+  },
+  es: {
+    campPace: 'Limpieza de campamentos lenta — {cs}/min vs ~{target}. Coge tus campamentos en cuanto reaparezcan.',
+    earlyFocusJungle: 'Inicio: haz full clear de tus campamentos, controla al jungla enemigo y ganquea una línea con CC.',
+    earlyFocusSupport: 'Inicio: pon wards en las entradas, mantén vivo a tu ADC y rota a medio cuando tu oleada esté empujada.',
+  },
+  pl: {
+    campPace: 'Wolno czyścisz obozy — {cs}/min zamiast ~{target}. Zbieraj obozy, gdy się odnawiają.',
+    earlyFocusJungle: 'Wczesna faza: full clear obozów, śledź wrogiego junglera i gankuj linię z CC.',
+    earlyFocusSupport: 'Wczesna faza: warduj wejścia, pilnuj HP swojego ADC i roam na mid, gdy fala jest wypchnięta.',
+  },
+  pt: {
+    campPace: 'Limpeza de camps lenta — {cs}/min vs ~{target}. Pegue seus camps assim que renascerem.',
+    earlyFocusJungle: 'Início: faça full clear dos camps, acompanhe o jungler inimigo e ganke uma rota com CC.',
+    earlyFocusSupport: 'Início: warde as entradas, mantenha seu ADC com vida e roame para o meio quando a onda estiver empurrada.',
+  },
+  ru: {
+    campPace: 'Медленно фармишь лес — {cs}/мин вместо ~{target}. Забирай кемпы, как только они респавнятся.',
+    earlyFocusJungle: 'Ранняя фаза: делай фулклир, следи за вражеским лесником и ганкай линию с контролем.',
+    earlyFocusSupport: 'Ранняя фаза: вардь входы, следи за хп своего АДК и роум на мид, когда волна запушена.',
+  },
+  tr: {
+    campPace: 'Kamp temizliği yavaş — {cs}/dk yerine ~{target}. Kampların doğduğu anda al.',
+    earlyFocusJungle: 'Erken oyun: kamplarını full temizle, rakip ormancıyı takip et ve CC olan koridora gank at.',
+    earlyFocusSupport: 'Erken oyun: koridor girişlerini wardla, ADC’nin canını koru ve dalga itildiğinde ortaya roam yap.',
+  },
+  ko: {
+    campPace: '정글 클리어가 느리다 — {cs}/분, 목표 ~{target}. 캠프가 리스폰되면 바로 먹어라.',
+    earlyFocusJungle: '초반: 캠프를 풀클리어하고, 상대 정글러를 트래킹하며, CC 있는 라인에 갱킹하라.',
+    earlyFocusSupport: '초반: 라인 입구에 와드를 박고, 원딜 체력을 관리하고, 라인을 밀었으면 미드로 로밍하라.',
+  },
+  zh: {
+    campPace: '清野偏慢——{cs}/分，目标 ~{target}。野怪一刷新就去打。',
+    earlyFocusJungle: '前期：把野区清完，盯住对方打野，去有控制的线上抓人。',
+    earlyFocusSupport: '前期：在线路入口做视野，保住你的ADC血量，兵线推掉后去中路游走。',
+  },
+  ja: {
+    campPace: 'キャンプの処理が遅い——{cs}/分（目標 ~{target}）。リスポーン次第でキャンプを取れ。',
+    earlyFocusJungle: '序盤：キャンプをフルクリアし、敵ジャングラーを把握し、CCのあるレーンにガンクを。',
+    earlyFocusSupport: '序盤：レーン入口にワードを置き、ADCの体力を守り、ウェーブを押したらミッドへロームを。',
+  },
+  vi: {
+    campPace: 'Dọn bãi chậm — {cs}/phút so với ~{target}. Hãy ăn bãi ngay khi chúng hồi sinh.',
+    earlyFocusJungle: 'Đầu trận: full clear bãi của bạn, theo dõi rừng địch và gank đường có hiệu ứng khống chế.',
+    earlyFocusSupport: 'Đầu trận: cắm mắt lối vào đường, giữ máu cho xạ thủ và roam giữa khi lính đã bị đẩy.',
+  },
+};
+for (const l in NUDGES_ROLE) Object.assign(NUDGES[l], NUDGES_ROLE[l]);
+
 // ── runtime ───────────────────────────────────────────────────────────
 let _lang = localStorage.getItem('lolcoach_lang');
 if (!_lang || !LANGS[_lang]) {
@@ -937,9 +1022,15 @@ function tNudge(code, params) {
 }
 
 // Build the localized "3 things to fix" text from the ranked gaps (offline mode).
-function templateCoach(gaps) {
+function templateCoach(gaps, role) {
   const T = TIPS[_lang] || TIPS.en;
-  return gaps.map((g, i) => `${i + 1}. ${tMetric(g.key)} — ${T[g.key] || TIPS.en[g.key] || ''}`).join('\n\n');
+  return gaps.map((g, i) => {
+    // A jungler's CS is camps, not lane minions — "last-hit through the first
+    // back" is wrong advice for them, so swap in the camp variant.
+    const key = (g.key === 'csPerMin' && role === 'JUNGLE') ? 'csPerMinJungle' : g.key;
+    const tip = T[key] || TIPS.en[key] || T[g.key] || TIPS.en[g.key] || '';
+    return `${i + 1}. ${tMetric(g.key)} — ${tip}`;
+  }).join('\n\n');
 }
 
 // Fill every element carrying data-i18n / data-i18n-ph with the current language.
