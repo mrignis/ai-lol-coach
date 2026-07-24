@@ -132,9 +132,6 @@ function render(data) {
 }
 
 const cap = s => (s ? s.charAt(0) + s.slice(1).toLowerCase() : s);
-function escapeHtml(s) {
-  return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-}
 
 let lastQuery = null; // {riotId, region} so a language switch can re-run it
 

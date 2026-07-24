@@ -28,8 +28,11 @@ overlay with live nudges and AI advice based on the actual state of the match.
 git clone https://github.com/mrignis/ai-lol-coach
 cd ai-lol-coach
 npm install
-npm start
+npm start          # launches the Electron app (server runs inside it)
 ```
+
+On Windows you can also double-click **`AI LoL Coach.vbs`** — same thing, but
+without the console window `npm` would open.
 
 ---
 

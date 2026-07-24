@@ -42,9 +42,6 @@ function render(d) {
   }
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-}
 
 // Matchup briefing — fetched once per game (server caches per patch anyway).
 let matchupLoadedFor = null;

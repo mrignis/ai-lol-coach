@@ -997,6 +997,12 @@ if (!_lang || !LANGS[_lang]) {
   _lang = LANGS[nav] ? nav : 'en';
 }
 
+// Shared by every page (index / live / builds), which is why it lives here
+// rather than being copy-pasted into each script.
+function escapeHtml(s) {
+  return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+}
+
 function getLang() { return _lang; }
 function setLang(l) { if (LANGS[l]) { _lang = l; localStorage.setItem('lolcoach_lang', l); } }
 function llmLang() { return LANG_LLM[_lang] || 'English'; }
