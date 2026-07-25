@@ -208,8 +208,8 @@ export function startServer(port = config.port) {
   return new Promise((resolve, reject) => {
     const server = app.listen(port, '127.0.0.1', () => {
       console.log(`\n  AI LoL Coach → http://localhost:${port}`);
-      console.log(`  Riot key: ${config.riotKey ? 'set' : 'MISSING (add RIOT_API_KEY to .env)'}`);
-      console.log(`  LLM provider: ${config.llm.provider}\n`);
+      console.log(`  Mode: ${config.proxy ? 'proxy (keys on the worker)' : 'direct (local keys)'}`);
+      console.log(`  Riot: ${canRiot ? 'ok' : 'MISSING (set PROXY_URL or RIOT_API_KEY)'}  ·  AI: ${canGroq || canGemini ? 'ok' : 'MISSING'}\n`);
       resolve(server);
     });
     server.on('error', reject);
