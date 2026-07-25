@@ -74,8 +74,12 @@ function createWindow() {
     transparent: true,
     backgroundColor: '#00000000',
     alwaysOnTop: true,
+    // focusable:false — hovering/clicking the widget must NOT pull focus off
+    // League. This is what made the game feel like it "switched" to the overlay.
+    focusable: false,
+    acceptFirstMouse: true,
     resizable: true,
-    skipTaskbar: false,
+    skipTaskbar: true,
     hasShadow: false,
     fullscreenable: false,
     minWidth: 220,
@@ -83,7 +87,10 @@ function createWindow() {
     webPreferences: SAFE_WEB_PREFS,
   });
   // Float above the game (works when League runs Borderless/Windowed).
-  win.setAlwaysOnTop(true, 'screen-saver');
+  // 'floating' (not 'screen-saver'): screen-saver is so high it sits over the
+  // game's own cursor layer and grabbed input; floating stays above League's
+  // window without fighting it for focus.
+  win.setAlwaysOnTop(true, 'floating');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   // Those two calls can flip the window back to "visible" internally, which
   // desynced the launcher's Show/Hide button. Pin the documented start state.
@@ -100,13 +107,13 @@ function createWindow() {
   });
   win.loadURL(OVERLAY_URL);
 
-  // When the game window is focused it can jump above ours, so keep
-  // re-asserting top position (without stealing focus from the game).
+  // Re-assert always-on-top periodically (some apps steal the top slot), but
+  // do NOT call moveTop() — moveTop activates the window and stole focus from
+  // the game every 1.5s. setAlwaysOnTop alone keeps us above without focusing.
   setInterval(() => {
     if (!win || win.isDestroyed() || !win.isVisible()) return;
-    win.setAlwaysOnTop(true, 'screen-saver');
-    if (!clickThrough) win.moveTop();
-  }, 1500);
+    win.setAlwaysOnTop(true, 'floating');
+  }, 2000);
 }
 
 // The launcher is the app's home window: analysis, news and widget controls.
@@ -140,22 +147,37 @@ async function openLauncher() {
 // Launcher behaviour: you open the app once, it waits, and the widget
 // appears by itself for the match — then steps out of the way afterwards.
 let wasInGame = false;
+let notInGameStreak = 0;
+// The Live Client Data API drops to "no game" on any transient hiccup mid-match
+// (a brief hang, the loading/reconnect moment). Hiding on a single reading made
+// the widget "close itself" during a game. Require several misses in a row so
+// only a real game-end retracts it.
+const END_CONFIRM = 4; // × ~8s ≈ 30s of no game before we hide
+
 async function gameWatch() {
   try {
     const live = await (await fetch(`http://localhost:${PORT}/api/live`)).json();
     const inGame = !!live.inGame;
-    if (inGame && !wasInGame) {
-      logLine('game detected → showing widget');
-      const w = ensureWindow();
-      if (!w.isVisible()) { autoShown = true; showWidget(); }
-    } else if (!inGame && wasInGame) {
-      logLine('game ended');
-      // Only retract what we raised: never hide a widget the user opened.
-      if (autoShown && alive(win) && win.isVisible()) { win.hide(); updateTrayMenu(); }
-      autoShown = false;
+    if (inGame) {
+      notInGameStreak = 0;
+      if (!wasInGame) {
+        logLine('game detected → showing widget');
+        const w = ensureWindow();
+        if (!w.isVisible()) { autoShown = true; showWidget(); }
+        wasInGame = true;
+      }
+    } else if (wasInGame) {
+      notInGameStreak++;
+      if (notInGameStreak >= END_CONFIRM) {
+        logLine(`game ended (confirmed ${notInGameStreak}×)`);
+        // Only retract what we raised: never hide a widget the user opened.
+        if (autoShown && alive(win) && win.isVisible()) { win.hide(); updateTrayMenu(); }
+        autoShown = false;
+        wasInGame = false;
+        notInGameStreak = 0;
+      }
     }
-    wasInGame = inGame;
-  } catch { /* server not up yet */ }
+  } catch { /* server not up yet — leave the widget as it is */ }
 }
 
 // ── controls exposed to the launcher page ─────────────────────────────
@@ -269,8 +291,10 @@ function showWidget() {
   const w = ensureWindow();
   clickThrough = false;
   w.setIgnoreMouseEvents(false);
-  w.show();
-  w.setAlwaysOnTop(true, 'screen-saver');
+  // showInactive, not show: bring the widget up WITHOUT focusing it, so League
+  // keeps input focus even the moment the overlay appears.
+  w.showInactive();
+  w.setAlwaysOnTop(true, 'floating');
   updateTrayMenu();
 }
 
