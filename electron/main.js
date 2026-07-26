@@ -87,10 +87,11 @@ function createWindow() {
     webPreferences: SAFE_WEB_PREFS,
   });
   // Float above the game (works when League runs Borderless/Windowed).
-  // 'floating' (not 'screen-saver'): screen-saver is so high it sits over the
-  // game's own cursor layer and grabbed input; floating stays above League's
-  // window without fighting it for focus.
-  win.setAlwaysOnTop(true, 'floating');
+  // 'screen-saver' is required: League in Borderless is itself a topmost
+  // window, and the lower 'floating' level left the widget behind the game.
+  // Focus is handled by focusable:false + showInactive() (never moveTop()),
+  // so the high z-order costs us nothing.
+  win.setAlwaysOnTop(true, 'screen-saver');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   // Those two calls can flip the window back to "visible" internally, which
   // desynced the launcher's Show/Hide button. Pin the documented start state.
@@ -112,7 +113,7 @@ function createWindow() {
   // the game every 1.5s. setAlwaysOnTop alone keeps us above without focusing.
   setInterval(() => {
     if (!win || win.isDestroyed() || !win.isVisible()) return;
-    win.setAlwaysOnTop(true, 'floating');
+    win.setAlwaysOnTop(true, 'screen-saver');
   }, 2000);
 }
 
@@ -294,7 +295,7 @@ function showWidget() {
   // showInactive, not show: bring the widget up WITHOUT focusing it, so League
   // keeps input focus even the moment the overlay appears.
   w.showInactive();
-  w.setAlwaysOnTop(true, 'floating');
+  w.setAlwaysOnTop(true, 'screen-saver');
   updateTrayMenu();
 }
 
