@@ -102,26 +102,38 @@ app.get('/api/live', async (req, res) => {
 // we analyse it eagerly and the widget picks the result up on its next poll.
 // The language is part of the cache identity: a tip generated while another
 // language was selected must never be replayed into a Ukrainian UI.
-let visionState = { tip: null, ts: 0, lang: 'en' };
-let textTipState = { data: null, ts: 0, lang: 'en' };
+// `sit` (which enemies are dead) is part of both cache identities: a tip built
+// around a respawn window must not outlive that window.
+let visionState = { tip: null, ts: 0, lang: 'en', sit: '' };
+let textTipState = { data: null, ts: 0, lang: 'en', sit: '' };
+let lastSit = ''; // situation at the time the last screenshot was analysed
 let lastCoachLang = 'en'; // vision calls happen out-of-band, so remember the UI language
 
 app.get('/api/live-coach', async (req, res) => {
   const bucket = ['low', 'mid', 'high'].includes(req.query.bucket) ? req.query.bucket : 'mid';
   lastCoachLang = req.query.lang || lastCoachLang;
   try {
-    // A fresh vision tip (screen + state) beats a state-only tip.
+    // `sit` = who is dead right now, sent by the widget (it polls the game
+    // every 5s). Advice built around a respawn window goes stale the moment
+    // that window opens or closes, so a cached tip from a different situation
+    // must never be replayed — that was the lag on enemy deaths.
     const wantLang = req.query.lang || 'en';
-    if (visionState.tip && visionState.lang === wantLang && Date.now() - visionState.ts < 90000) {
+    const sit = String(req.query.sit || '');
+    lastSit = sit; // vision runs out-of-band; tag its tips with this situation
+    // Someone is dead → the window is short; keep tips fresh instead of cheap.
+    const textTtl = sit ? 12000 : 45000;
+    const visionTtl = sit ? 20000 : 90000;
+
+    if (visionState.tip && visionState.lang === wantLang && visionState.sit === sit
+        && Date.now() - visionState.ts < visionTtl) {
       return res.json({ inGame: true, ready: true, tip: visionState.tip, source: 'vision' });
     }
-    // Text tips cost an LLM call each — cache 45s so the 30s widget poll
-    // doesn't double our daily quota burn (free tiers are small).
-    if (textTipState.data && Date.now() - textTipState.ts < 45000 && textTipState.lang === (req.query.lang || 'en')) {
+    if (textTipState.data && textTipState.lang === wantLang && textTipState.sit === sit
+        && Date.now() - textTipState.ts < textTtl) {
       return res.json(textTipState.data);
     }
-    const out = await liveCoachResponse(bucket, req.query.lang || 'en');
-    if (out.ready && out.tip) textTipState = { data: out, ts: Date.now(), lang: req.query.lang || 'en' };
+    const out = await liveCoachResponse(bucket, wantLang);
+    if (out.ready && out.tip) textTipState = { data: out, ts: Date.now(), lang: wantLang, sit };
     res.json(out);
   } catch (e) {
     if (e.code === 'NOGAME') return res.json({ inGame: false });
@@ -194,7 +206,7 @@ app.post('/api/vision', async (req, res) => {
       ctx: base.ctx,
       lang: lastCoachLang,
     });
-    if (tip) visionState = { tip, ts: Date.now(), lang: lastCoachLang };
+    if (tip) visionState = { tip, ts: Date.now(), lang: lastCoachLang, sit: lastSit };
     res.json({ ok: !!tip });
   } catch (e) {
     if (e.code !== 'NOGAME') console.error('[vision]', e.message);

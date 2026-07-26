@@ -67,7 +67,12 @@ async function poll() {
       return showWaiting(t('waiting'));
     }
     if (!d.ready) { lastLive = null; return showWaiting(t('detected')); }
+    const prevDead = deadSignature(); // from the previous poll, before render
     render(d);
+    // A kill opens a window worth acting on for only ~30-50s. Waiting for the
+    // 30s tip timer meant the advice often landed after the enemy respawned,
+    // so a change in who is dead asks for a fresh tip immediately.
+    if (deadSignature() !== prevDead) loadAiTip();
     // First ready poll of a new game → pull the briefing for this champion.
     const gameKey = d.me.champion + ':' + getLang();
     if (matchupLoadedFor !== gameKey) {
@@ -85,10 +90,19 @@ async function poll() {
 // Skipped entirely when the AI section is switched off, so we don't burn LLM
 // calls (and cloud quota) on a card nobody is looking at.
 let lastAi = null;
+// Which enemies are dead right now, as a stable key. The server uses it as
+// part of its cache identity so a tip about a respawn window can't be replayed
+// after that window closed.
+function deadSignature() {
+  const dead = lastLive?.ctx?.deadEnemies || [];
+  return dead.map(e => e.champion).sort().join(',');
+}
+
 async function loadAiTip() {
   if (!ovOpts.ai) return;
   try {
-    const d = await (await fetch(`/api/live-coach?bucket=${bucket}&lang=${getLang()}`)).json();
+    const sit = encodeURIComponent(deadSignature());
+    const d = await (await fetch(`/api/live-coach?bucket=${bucket}&lang=${getLang()}&sit=${sit}`)).json();
     if (!d.inGame || !d.ready) { lastAi = null; return; }
     lastAi = d;
     renderAiTip();
