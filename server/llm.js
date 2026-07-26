@@ -1,5 +1,5 @@
 import { config } from './config.js';
-import { METRICS } from './benchmarks.js';
+import { METRICS, BENCHMARKS } from './benchmarks.js';
 import { groqTarget, geminiTarget, canGroq, canGemini } from './upstream.js';
 
 const fmt = (key, v) => (METRICS[key] ? METRICS[key].fmt(v) : String(v));
@@ -211,9 +211,18 @@ const PHASE_BRIEF = {
 function buildContextLines(me, gameTimeSec, role, ctx) {
   const min = Math.max(gameTimeSec / 60, 0.5);
   const phase = ctx?.phase || 'mid';
+  // CS with its target: given a bare number the model had no way to know
+  // whether the farm was good, so it fell back to "farm more" even when the
+  // player was ahead of the benchmark for their role.
+  const csPerMin = me.cs / min;
+  const csTarget = (BENCHMARKS[role] || BENCHMARKS.MIDDLE)[ctx?.bucket || 'mid']?.csPerMin;
+  const csNote = csTarget
+    ? ` — target for ${role} is ~${csTarget}/min, so this is ${csPerMin >= csTarget ? 'FINE, do NOT tell them to farm more' : 'behind'}`
+    : '';
+
   const lines = [
     `You: ${me.champion} (${role}) lvl ${me.level}, KDA ${me.kills}/${me.deaths}/${me.assists}, ` +
-      `CS ${me.cs} (${(me.cs / min).toFixed(1)}/min), vision ${me.wardScore}, ${me.gold}g unspent.`,
+      `CS ${me.cs} (${csPerMin.toFixed(1)}/min${csNote}), vision ${me.wardScore}, ${me.gold}g unspent.`,
     `Clock: ${Math.round(gameTimeSec / 60)} min (${phase} game).`,
   ];
   // A champion that is dead right now must never be described as a live
@@ -229,8 +238,22 @@ function buildContextLines(me, gameTimeSec, role, ctx) {
         '. Your advice MUST use this window (objective, tower, deep vision) and say what to take before they respawn. ***');
     }
     lines.push(`Score: your team ${ctx.teamKills} kills vs enemy ${ctx.enemyKills}.`);
-    lines.push(`Objectives — dragons ${ctx.dragons.mine}:${ctx.dragons.theirs}, barons ${ctx.barons.mine}:${ctx.barons.theirs}, ` +
-      `turrets ${ctx.turrets.mine}:${ctx.turrets.theirs}, inhibs ${ctx.inhibs.mine}:${ctx.inhibs.theirs}.`);
+    // Spelled out, never "1:0" — a bare score was read backwards ("my inhib is
+    // down") and produced defend-your-base advice while the player was the one
+    // pushing with super minions.
+    lines.push(
+      `Objectives TAKEN BY YOUR TEAM: ${ctx.dragons.mine} dragons, ${ctx.barons.mine} barons, ` +
+      `${ctx.turrets.mine} enemy turrets, ${ctx.inhibs.mine} enemy inhibitors.\n` +
+      `Objectives TAKEN BY THE ENEMY: ${ctx.dragons.theirs} dragons, ${ctx.barons.theirs} barons, ` +
+      `${ctx.turrets.theirs} of your turrets, ${ctx.inhibs.theirs} of your inhibitors.`);
+    if (ctx.inhibs.mine > 0) {
+      lines.push(`YOU BROKE ${ctx.inhibs.mine} ENEMY INHIBITOR(S): YOUR team has super minions pushing INTO THE ENEMY BASE. ` +
+        'This is your advantage — press it (siege with the wave, take the next objective). ' +
+        'Do NOT tell the player to clear super minions or defend: those minions are on your side.');
+    }
+    if (ctx.inhibs.theirs > 0) {
+      lines.push(`The enemy broke ${ctx.inhibs.theirs} of your inhibitors: THEIR super minions are pushing into YOUR base — clearing them is defence work.`);
+    }
     if (ctx.dragons.theirs === 3) lines.push('WARNING: enemy is one dragon from Dragon Soul.');
     if (ctx.dragons.mine === 3) lines.push('Your team is one dragon from Dragon Soul.');
     if (ctx.baronUpIn <= 60) lines.push(`Baron is up or spawning in ~${Math.max(0, ctx.baronUpIn)}s.`);

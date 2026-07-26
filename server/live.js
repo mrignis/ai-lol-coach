@@ -63,7 +63,7 @@ const scorerOf = name => (/T1/.test(name || '') ? 'CHAOS' : 'ORDER');
 // gives every item's real price, so no static price table can go stale.
 const itemGold = p => (p.items || []).reduce((a, it) => a + (it.price || 0) * (it.count || 1), 0);
 
-export async function gameContext(data, me) {
+export async function gameContext(data, me, bucket = 'mid') {
   const gameTime = data.gameData?.gameTime || 0;
   const players = data.allPlayers || [];
   const events = data.events?.Events || [];
@@ -161,6 +161,9 @@ export async function gameContext(data, me) {
       ? { champion: nemesisPlayer.championName, times: killsOnMe[nemesisId] }
       : null,
     phase: gamePhase(gameTime),
+    // Carried so the coach can say whether the player's CS is actually behind
+    // — without a target it defaulted to "farm more" even at good CS.
+    bucket,
     myTeam, enemyTeam,
     teamKills: sumKills(mine),
     enemyKills: sumKills(foes),
@@ -297,7 +300,7 @@ export async function buildLiveResponse(data, bucket = 'mid') {
   const gold = Math.round(data.activePlayer?.currentGold || 0);
   const events = data.events?.Events || [];
   const min = Math.max(gameTime / 60, 0.5);
-  const ctx = await gameContext(data, { ...me, level: data.activePlayer?.level || me.level || 0 });
+  const ctx = await gameContext(data, { ...me, level: data.activePlayer?.level || me.level || 0 }, bucket);
 
   return {
     inGame: true,
