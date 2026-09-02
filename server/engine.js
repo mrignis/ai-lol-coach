@@ -72,6 +72,11 @@ export function rankGaps(metrics, role, bucket) {
 }
 
 // The top 3 gaps are the player's personal weaknesses.
+// Only metrics the player is actually behind on. Taking a flat top-3 listed
+// strengths as things to fix — a support with 2.11 vision/min against a 1.10
+// target was told to work on vision. The 2% floor keeps noise out.
+// At least one entry is always returned so the report is never blank.
 export function topWeaknesses(gaps, count = 3) {
-  return gaps.slice(0, count);
+  const behind = gaps.filter(g => g.gap > 0.02);
+  return behind.length ? behind.slice(0, count) : gaps.slice(0, 1);
 }

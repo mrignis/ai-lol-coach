@@ -2,6 +2,7 @@ import https from 'node:https';
 import { BENCHMARKS } from './benchmarks.js';
 import { liveTip } from './llm.js';
 import { getChampions, isAP } from './ddragon.js';
+import { track } from './timeline.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // League "Live Client Data API" — runs LOCALLY on the player's PC while a
@@ -146,6 +147,15 @@ export async function gameContext(data, me, bucket = 'mid') {
     teamItemGold: myGold,
     enemyItemGold: foeGold,
     enemyDamage: { ad: adCount, ap: apCount },
+    // What actually happened, not just the current numbers — this is what lets
+    // the coach react to a fight or an objective instead of restating the score.
+    timeline: track({
+      gameTime,
+      riotEvents: events,
+      meName: myName,
+      teamOf,
+      playerState: { items: itemNames(me), ultLevel: ab.R?.abilityLevel || 0 },
+    }),
     deadEnemies,
     myHpPct: pct(stats.currentHealth, stats.maxHealth),
     myResourcePct: pct(stats.resourceValue, stats.resourceMax),

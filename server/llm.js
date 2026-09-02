@@ -4,13 +4,43 @@ import { groqTarget, geminiTarget, canGroq, canGemini } from './upstream.js';
 
 const fmt = (key, v) => (METRICS[key] ? METRICS[key].fmt(v) : String(v));
 
+// Last line of defence for the FORMAT_RULE below. The prompt asks for plain
+// text, but every provider slips a "**bold**" in eventually and the UI prints
+// it verbatim, so strip the markers (never the words) on the way out.
+function plainText(s) {
+  return String(s)
+    .replace(/```[a-z]*\n?|`/gi, '')            // code fences and inline ticks
+    // *italic* / **bold**, and __underline__ — single "_" is left alone so an
+    // identifier or a name never gets mangled.
+    .replace(/(\*{1,3}|_{2,3})(?=\S)([\s\S]*?\S)\1/g, '$2')
+    .replace(/^[ \t]*#{1,6}[ \t]+/gm, '')       // ATX headings
+    .replace(/^[ \t]*[*+•][ \t]+/gm, '- ')      // markdown bullets → plain dash
+    .replace(/[*_]{2,}/g, '')                   // leftover unpaired runs
+    .replace(/[ \t]+$/gm, '')
+    .trim();
+}
+
+// Plain-English meaning of each metric. A bare label was being misread once
+// translated — "Deaths per game" came back as "you kill 7.7 per game" in
+// Ukrainian, and "Vision score / min" turned into an invented abstract noun.
+// Saying what the number actually counts removes the guesswork.
+const METRIC_MEANING = {
+  csPerMin: 'minions and jungle camps killed per minute',
+  visPerMin: 'vision score earned per minute (wards placed plus enemy wards cleared)',
+  kp: "share of the team's kills this player took part in",
+  deaths: 'how many times THIS PLAYER DIES in one game (their own deaths — not kills they get)',
+  goldPerMin: 'gold earned per minute',
+  dmgPerMin: 'damage dealt to enemy champions per minute',
+};
+
 // Turn a gap into a one-line "your number vs target" fact for the prompt.
 function gapLine(g) {
   const pct = Math.round(Math.abs(g.gap) * 100);
   const side = g.gap > 0
     ? (g.dir === 'higher' ? `${pct}% below target` : `${pct}% above target`)
     : 'at or above target';
-  return `- ${g.label}: you average ${fmt(g.key, g.player)} vs a target of ${fmt(g.key, g.target)} (${side})`;
+  const meaning = METRIC_MEANING[g.key] ? ` (this metric = ${METRIC_MEANING[g.key]})` : '';
+  return `- ${g.label}${meaning}: you average ${fmt(g.key, g.player)} vs a target of ${fmt(g.key, g.target)} (${side})`;
 }
 
 // lang code → language the LLM should reply in.
@@ -20,14 +50,83 @@ const LANG_NAMES = {
   ko: 'Korean', zh: 'Simplified Chinese', ja: 'Japanese', vi: 'Vietnamese',
 };
 
+// Every surface renders model output as PLAIN TEXT (textContent / escaped
+// innerHTML), so any Markdown the model emits is shown literally — the UI was
+// printing "**Участь у вбивствах**" asterisks and all.
+const FORMAT_RULE =
+  '\n\nFORMAT — plain text only. No Markdown of any kind: no asterisks (* or **), no underscores, ' +
+  'no #, no backticks, no bold, no italics, no headings, no bullet characters. Numbered points are ' +
+  'written as "1. ", "2. ", "3. " and nothing else. Never write the same word twice in a row, never ' +
+  'leave a sentence unfinished, and re-read every sentence before you output it: each one must be ' +
+  'complete, grammatical and actually mean something — never pad with a word you are unsure of.';
+
+// Per-language glossary, kept in sync with public/i18n.js so the AI prose and
+// the static UI call the same thing by the same name. Without it the model
+// keeps minting transliterations ("візій", "джунг", "спавн") that no player
+// says. Only languages we have verified terminology for belong here.
+const LANG_TERMS = {
+  uk: [
+    'vision / vision score = огляд (NOT "візія", NOT "бачення"; uncountable — "огляду за хвилину", never "оглядів")',
+    // Verbs are listed with the imperative the tip should actually use — given
+    // only the dictionary form the model opened tips with "Ставити…".
+    'ward = вард / варди; control ward = контрольний вард; to ward → command form "Постав вард" ' +
+      '(never "Ставити"); sweep = чистити ворожі варди → "Почисти"',
+    'lane = лінія; mid = мід; top = топ; wave = хвиля; minion = міньйон; to push = пушити',
+    'jungle = ліс (NOT "джунгл"); jungler = лісник; camp = кемп; full clear = повний зачист лісу',
+    'objective = об’єкт; spawn / respawn = поява / відродження (NOT "спавн"); pit = яма',
+    'kill participation = участь у вбивствах; deaths per game = смертей за гру',
+    'gold per minute = золота за хвилину; damage per minute = шкоди за хвилину; CS per minute = КС за хвилину',
+    'trade = розмін; last-hit = добивати; back / recall = повернення на базу; roam = роум, роумити',
+    'gank = ганк, ганкати; crowd control = контроль; cooldown = кулдаун; peel = прикривати',
+    'shield = щит; heal = лікування; carry = керрі; front line = передня лінія; positioning = позиціювання',
+    'ADC / bot carry = АДК (in Cyrillic, never "ADC"); support = сапорт; ultimate = ульта; dash = ривок',
+    'inhibitor = інгібітор (NOT "інхібітор", NOT "інхіботор"); super minions = суперміньйони',
+    'Baron buff = баф барона (NOT "баронський баф"); turret / tower = вежа; base = база; river = річка',
+  ].map(s => '  ' + s).join('\n'),
+};
+
+// Half-translated coaching text is the single most common complaint: Ukrainian
+// sentences came back stuffed with "vision score", "carries", "GPM", invented
+// hybrids like "utility-здібності", and formal register the rest of the UI
+// never uses. Spelling the rule out per-language is what actually stops it.
+export function languageRule(lang) {
+  const langName = LANG_NAMES[lang];
+  if (!lang || lang === 'en' || !langName) return '';
+  return `\n\nLANGUAGE — write EVERY sentence in ${langName}, the way a ${langName}-speaking player ` +
+    'actually talks about the game. Address the player informally, in the singular, and keep that same ' +
+    'register for the whole reply.\n' +
+    '- Every instruction is a direct command to the player: use the imperative, second person singular. ' +
+    'Never phrase an instruction as an infinitive, a passive, or a description of what one ought to do. ' +
+    'Required shape: "Stay behind your ADC and place a ward at the river entrance before the objective ' +
+    'spawns." NOT "to stay behind the ADC and to place a ward", NOT "one should stay behind the ADC".\n' +
+    '- Only proper nouns stay in English, spelled exactly as in the game client: champion names, item ' +
+    "names, summoner spell names, rune names (Zhonya's Hourglass, Redemption, Flash, Grasp of the Undying).\n" +
+    `- EVERY other word must be ${langName}, including game concepts: vision, ward, lane, wave, minion, ` +
+    'camp, objective, trade, roam, peel, poke, shield, heal, carry, cooldown, kill participation, gold ' +
+    `per minute, damage per minute. A loanword ${langName} players genuinely use is fine; an English ` +
+    `word or phrase dropped into a ${langName} sentence is not, and never glue an English word onto a ` +
+    `${langName} one with a hyphen.\n` +
+    '- Never use the abbreviations GPM, DPM, KP, CSPM, WPM or VS — write the stat out in words.\n' +
+    `- The stat labels in the data below are English: re-express each one as a ${langName} player would ` +
+    'say it (an average per game, a rate per minute). Do not translate them word for word and never turn ' +
+    'them into an abstract noun.\n' +
+    '- Do NOT transliterate an English word into the local alphabet to invent a term — a respelled ' +
+    'English word is still English. Do not clip or abbreviate words either; write them in full.\n' +
+    `- Do not invent words. If you are unsure of the ${langName} term, use plain everyday wording any ` +
+    'player understands.' +
+    (LANG_TERMS[lang] ? `\n- Use exactly these ${langName} terms, which is what the app's own interface ` +
+      `uses:\n${LANG_TERMS[lang]}` : '');
+}
+
 function buildPrompt({ rank, role, bucket, roleMixed, weaknesses, lang, progress }) {
-  const langName = LANG_NAMES[lang] || 'English';
   const system =
     'You are a friendly, direct League of Legends coach. You know THIS player from their ' +
     'own recent games — never give generic tier-list advice. No filler. Speak to them directly ("you"). ' +
     'For each weakness: name the problem plainly, cite their own number vs the benchmark, and give ONE ' +
-    'specific thing to do next game. Keep the whole reply under 250 words. Output 3 short numbered points.' +
-    (lang && lang !== 'en' ? ` Write your entire response in natural, fluent, grammatically correct ${langName} — no translation artifacts or awkward calques.` : '');
+    'specific thing to do next game. Output exactly 3 numbered points, at most 2 sentences each, ' +
+    'and stop after the third — hard limit 150 words for the whole reply, so there is never a ' +
+    'sentence left hanging.' +
+    FORMAT_RULE + languageRule(lang);
 
   const rankStr = rank ? `${rank.tier} ${rank.rank} (${bucket}-elo benchmarks)` : `unranked (${bucket}-elo benchmarks)`;
   const mixNote = roleMixed
@@ -72,7 +171,7 @@ function templateCoach(weaknesses) {
   }).join('\n\n');
 }
 
-async function callGroq({ system, user }) {
+async function callGroq({ system, user, effort }) {
   const { url, headers } = groqTarget();
   const res = await fetch(url, {
     method: 'POST',
@@ -81,15 +180,30 @@ async function callGroq({ system, user }) {
       model: config.llm.groqModel,
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
       temperature: 0.6,
-      max_tokens: 500,
-      // gpt-oss are reasoning models — low effort keeps latency fit for live tips.
-      ...(config.llm.groqModel.includes('gpt-oss') ? { reasoning_effort: 'low' } : {}),
+      // 500 was enough for English but cut Cyrillic/CJK replies off mid-word
+      // (those tokenize 2-3x heavier), which read as a text bug in the UI.
+      // max_tokens covers reasoning + visible answer on gpt-oss, and at
+      // 'medium' the reasoning alone can run past 900 — that returned an EMPTY
+      // message and made the whole provider fall through silently.
+      max_tokens: effort === 'medium' ? 2500 : 900,
+      // gpt-oss are reasoning models — 'low' keeps latency fit for live tips,
+      // but at that effort the non-English prose degrades into clipped and
+      // invented words, so the post-game analysis asks for 'medium' instead
+      // (nobody is watching a 60s clock for it).
+      ...(config.llm.groqModel.includes('gpt-oss') ? { reasoning_effort: effort || 'low' } : {}),
     }),
     signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) throw new Error(`groq_${res.status}: ${(await res.text()).slice(0, 200)}`);
   const data = await res.json();
-  return data.choices?.[0]?.message?.content?.trim();
+  const choice = data.choices?.[0];
+  // An empty message with finish_reason "length" means the reasoning ate the
+  // budget. Without this line the provider chain just moved on in silence and
+  // the token cap looked like "gemini is the primary provider".
+  if (!choice?.message?.content && choice?.finish_reason === 'length') {
+    throw new Error('groq_empty: reasoning consumed max_tokens');
+  }
+  return choice?.message?.content?.trim();
 }
 
 // Gemini with Google Search grounding — used for meta/guide lookups so the
@@ -120,7 +234,7 @@ export async function groundedAnswer({ system, user }) {
   if (canGemini) {
     try {
       const text = await callGeminiGrounded({ system, user });
-      if (text) return { text, source: 'gemini-search' };
+      if (text) return { text: plainText(text), source: 'gemini-search' };
     } catch (e) {
       console.warn('[llm] grounded search failed, falling back to plain LLM:', String(e.message).slice(0, 90));
     }
@@ -140,7 +254,9 @@ async function callGemini({ system, user }) {
       contents: [{ role: 'user', parts: [{ text: user }] }],
       // thinkingBudget: 0 — flash models reason internally by default, which
       // burns latency and output tokens we don't need for short coaching text.
-      generationConfig: { temperature: 0.6, maxOutputTokens: 700, thinkingConfig: { thinkingBudget: 0 } },
+      // 900 (was 700) for the same reason as Groq: Cyrillic/CJK answers were
+      // being truncated in the middle of a sentence.
+      generationConfig: { temperature: 0.6, maxOutputTokens: 900, thinkingConfig: { thinkingBudget: 0 } },
     }),
     signal: AbortSignal.timeout(20000),
   });
@@ -169,14 +285,14 @@ function providerChain() {
 }
 
 // Returns { text, provider } or null (provider 'none' / all failed → throws last error).
-async function callLLM(system, user) {
+async function callLLM(system, user, opts = {}) {
   if (config.llm.provider === 'none') return null;
-  const prompt = { system, user };
+  const prompt = { system, user, ...opts };
   let lastErr = null;
   for (const p of providerChain()) {
     try {
       const text = await PROVIDER_CALLS[p](prompt);
-      if (text) return { text, provider: p };
+      if (text) return { text: plainText(text), provider: p };
     } catch (e) {
       lastErr = e;
       console.warn(`[llm] ${p} failed (${String(e.message).slice(0, 90)}) — trying next provider`);
@@ -231,6 +347,22 @@ function buildContextLines(me, gameTimeSec, role, ctx) {
   const mark = champ => (deadMap.has(champ) ? `${champ} (DEAD, back in ${deadMap.get(champ)}s)` : champ);
 
   if (ctx) {
+    // What has actually been happening. A snapshot of the score cannot tell the
+    // coach that the enemy just took Baron or that the player has died twice in
+    // two minutes, which is why its late-game advice read as generic.
+    if (ctx.timeline?.recent?.length) {
+      lines.push('WHAT JUST HAPPENED (last 2 minutes, newest last):\n  ' +
+        ctx.timeline.recent.join('\n  ') +
+        `\nMomentum: ${ctx.timeline.summary}. React to THIS — if the team just lost a fight, ` +
+        'stabilise instead of forcing; if they just won one, say what to convert it into.');
+    } else if (ctx.timeline?.summary) {
+      lines.push(`Momentum: ${ctx.timeline.summary}.`);
+    }
+    // Silence about deaths was being filled in by the model — it invented "Zed
+    // is dead 40s" from a name it saw elsewhere in the context. Say it plainly.
+    if (!ctx.deadEnemies?.length) {
+      lines.push('EVERY ENEMY IS ALIVE right now. Do NOT claim anyone is dead and do NOT invent a respawn timer.');
+    }
     // Highest-value fact first: a dead enemy is a timed window to take something.
     if (ctx.deadEnemies?.length) {
       lines.push('*** WINDOW OPEN — DEAD ENEMIES: ' + ctx.deadEnemies
@@ -297,7 +429,6 @@ function buildContextLines(me, gameTimeSec, role, ctx) {
 }
 
 const COACH_SYSTEM = (phase, lang, role) => {
-  const langName = LANG_NAMES[lang] || 'English';
   return 'You are a sharp League of Legends coach watching a LIVE game with the full scoreboard ' +
     'in front of you. Tell the player what to do in the next 60-90 seconds.\n' +
 
@@ -312,6 +443,9 @@ const COACH_SYSTEM = (phase, lang, role) => {
 
     'HOW TO WRITE IT:\n' +
     '- Lead with the action, not the observation. "Take dragon now" beats "dragon is up".\n' +
+    '- The FIRST WORD must be a verb giving an order to the player ("Take", "Ward", "Back off", ' +
+    '"Buy"). Never open with the dictionary form of a verb, a noun phrase, or a description — in ' +
+    'languages that distinguish them, that means the imperative, never the infinitive.\n' +
     '- Anchor to something real you were given: a champion name, a timer, a number, an item.\n' +
     '- One concrete action, plus the reason in the same breath. Then stop.\n' +
     '- If you name a threat, say the counter-play (where to stand, what to buy, what to wait for).\n' +
@@ -327,7 +461,7 @@ const COACH_SYSTEM = (phase, lang, role) => {
 
     'Max 40 words. No preamble, no bullet labels, speak directly ("you"). ' +
     PHASE_BRIEF[phase] + ' ' + (ROLE_BRIEF[role] || '') +
-    (lang && lang !== 'en' ? ` Reply in natural, grammatically correct ${langName}.` : '');
+    FORMAT_RULE + languageRule(lang);
 };
 
 export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang }) {
@@ -337,7 +471,9 @@ export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang }) {
   lines.push('What is the single most useful thing to do right now?');
   const user = lines.join('\n');
   try {
-    const r = await callLLM(system, user);
+    // medium, like the post-game coach: at low effort the model drops into
+    // infinitives and slips Russian words into Ukrainian tips.
+    const r = await callLLM(system, user, { effort: 'medium' });
     if (r?.text) return { tip: r.text.trim(), source: r.provider };
   } catch (e) {
     console.warn('[llm] liveTip failed:', e.message);
@@ -417,7 +553,7 @@ export async function visionTip({ imageBase64, minimapBase64, me, gameTimeSec, r
   for (const [name, fn] of attempts) {
     try {
       const text = await fn(args);
-      if (text) return text;
+      if (text) return plainText(text);
     } catch (e) {
       lastErr = e;
       console.warn(`[llm] vision ${name} failed (${String(e.message).slice(0, 90)}) — trying next`);
@@ -432,7 +568,9 @@ export async function visionTip({ imageBase64, minimapBase64, me, gameTimeSec, r
 export async function coach(ctx) {
   const prompt = buildPrompt(ctx);
   try {
-    const r = await callLLM(prompt.system, prompt.user);
+    // 'medium' reasoning: the post-game write-up is long-form prose in the
+    // player's own language and 'low' effort produced clipped/invented words.
+    const r = await callLLM(prompt.system, prompt.user, { effort: 'medium' });
     if (r?.text) return { text: r.text, source: r.provider };
   } catch (e) {
     console.warn('[llm] all providers failed, using template fallback:', e.message);

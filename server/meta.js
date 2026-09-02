@@ -1,6 +1,6 @@
 import * as cache from './cache.js';
 import { currentPatch } from './news.js';
-import { groundedAnswer } from './llm.js';
+import { groundedAnswer, languageRule } from './llm.js';
 
 // Pre-game matchup briefing: the bot "reads the guides" for the player.
 // Google-search-grounded so it reflects the CURRENT patch, then cached per
@@ -21,8 +21,12 @@ export async function matchupBrief({ champ, vs, role, lang = 'en' }) {
     '2) Three matchup rules — each actionable (threat → what to do), one line each\n' +
     '3) Your power spike and what to do when it hits (one line)\n' +
     'Max 90 words total.' +
-    (lang !== 'en' ? ' Write the entire answer in natural, grammatically correct ' +
-      ({ uk: 'Ukrainian', fr: 'French', de: 'German', es: 'Spanish', pl: 'Polish', pt: 'Brazilian Portuguese', ru: 'Russian', tr: 'Turkish', ko: 'Korean', zh: 'Simplified Chinese', ja: 'Japanese', vi: 'Vietnamese' }[lang] || 'English') + '.' : '');
+    // Same plain-text + no-half-translation rules as the coaching prompts: this
+    // brief is rendered with textContent, so Markdown would show up literally.
+    '\n\nFORMAT — plain text only. No Markdown of any kind: no asterisks (* or **), no underscores, ' +
+    'no #, no backticks, no bold, no headings, no bullet characters. Never write the same word twice ' +
+    'in a row and never leave a sentence unfinished.' +
+    languageRule(lang);
 
   const user =
     `League of Legends patch ${patch}. I am about to play ${champ} (${role})` +

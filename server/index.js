@@ -121,8 +121,11 @@ app.get('/api/live-coach', async (req, res) => {
     const sit = String(req.query.sit || '');
     lastSit = sit; // vision runs out-of-band; tag its tips with this situation
     // Someone is dead → the window is short; keep tips fresh instead of cheap.
-    const textTtl = sit ? 12000 : 45000;
-    const visionTtl = sit ? 20000 : 90000;
+    // `hot` (not the mere presence of `sit`) decides: the signature is always
+    // populated now that it also carries the event count.
+    const hot = req.query.hot === '1';
+    const textTtl = hot ? 12000 : 45000;
+    const visionTtl = hot ? 20000 : 90000;
 
     if (visionState.tip && visionState.lang === wantLang && visionState.sit === sit
         && Date.now() - visionState.ts < visionTtl) {
