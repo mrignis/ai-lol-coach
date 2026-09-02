@@ -7,6 +7,14 @@ const $ = id => document.getElementById(id);
 let loadTimer = null;
 let lastData = null; // kept so switching language re-renders the current result
 
+// Champion portraits come from Data Dragon. The patch version arrives with the
+// news payload, so the last one we saw is remembered for the first paint.
+let ddPatch = localStorage.getItem('lolcoach_ddpatch') || '15.1.1';
+// Match-V5 champion names are Data Dragon ids apart from this one spelling.
+const DD_ALIAS = { FiddleSticks: 'Fiddlesticks' };
+const champIcon = id =>
+  `https://ddragon.leagueoflegends.com/cdn/${ddPatch}/img/champion/${encodeURIComponent(DD_ALIAS[id] || id)}.png`;
+
 async function loadRegions() {
   // Remember the player's last region so they don't keep re-picking it.
   const saved = localStorage.getItem('lolcoach_region') || 'euw1';
@@ -25,6 +33,7 @@ async function loadRegions() {
 function startLoading() {
   $('error').hidden = true;
   $('results').hidden = true;
+  document.body.classList.remove('has-results'); // collapses the side column
   $('loading').hidden = false;
   $('go').disabled = true;
   const steps = t('loading');
@@ -57,29 +66,82 @@ function fmtMetric(key, v) {
   return String(Math.round(v));
 }
 
+// One "personal pattern" row: label, the two numbers, and a bar that grows
+// left (red, worse) or right (green, better) out of the centre line.
+function patternRow({ label, num, title, shown, better }) {
+  const cls = better ? 'good' : 'bad';
+  const width = Math.min(Math.abs(shown) * 100, 50); // half the track = 50% off
+  const sign = shown >= 0 ? '+' : '−';
+  return `<div class="pat">
+    <div class="pat-top">
+      <span class="pat-k">${label}</span>
+      <span class="pat-num"${title ? ` title="${escapeHtml(title)}"` : ''}>${num}</span>
+    </div>
+    <div class="pat-bot">
+      <div class="pat-track"><i class="pat-fill ${cls}" style="width:${width}%"></i></div>
+      <span class="pat-v ${cls}">${sign}${Math.round(Math.abs(shown) * 100)}%</span>
+    </div>
+  </div>`;
+}
+
 function render(data) {
   lastData = data;
   const s = data.summary;
 
-  // Summary card
+  // ── Personal ratings ──────────────────────────────────────────────
   $('playerName').textContent = `${s.gameName} #${s.tagLine}`;
-  const rank = s.rank ? `${cap(s.rank.tier)} ${s.rank.rank} · ${s.rank.lp} LP` : t('unranked');
-  $('playerRank').textContent = `${rank} · ${t('mostly')} ${tRole(s.mainRole)}`;
+  $('rankCard').dataset.tier = s.rank ? String(s.rank.tier).toLowerCase() : '';
+  $('rankDiv').textContent = s.rank ? (s.rank.rank || '') : '';
+  $('playerRank').textContent = s.rank ? `${cap(s.rank.tier)} ${s.rank.rank}` : t('unranked');
+  $('rankLp').textContent = s.rank ? `${s.rank.lp} LP` : '';
+  $('roleLine').textContent = `${t('mostly')} ${tRole(s.mainRole)}`;
+  $('winsNum').textContent = s.wins;
+  $('lossesNum').textContent = s.losses;
+  $('winsWord').textContent = tPlural('winsLabel', s.wins);
+  $('lossesWord').textContent = tPlural('lossesLabel', s.losses);
+  $('wlBar').style.width = pct(s.winRate);
+
+  // ── Recent form (donut) ───────────────────────────────────────────
+  const wrCol = s.winRate >= 0.5 ? 'var(--green)' : 'var(--red)';
   $('wrValue').textContent = pct(s.winRate);
-  $('wrValue').style.color = s.winRate >= 0.5 ? 'var(--green)' : 'var(--red)';
+  $('wrValue').style.color = wrCol;
+  $('wrDonut').style.setProperty('--p', Math.round(s.winRate * 100));
+  $('wrDonut').style.setProperty('--wr-col', wrCol);
+  $('playedNum').textContent = s.gamesAnalyzed;
   $('wrGames').textContent = s.gamesAnalyzed;
-  $('mainChamps').innerHTML = s.mainChamps.map(c =>
-    `<div class="champ"><b>${c.champion}</b><span class="cwr">${c.games}g · ${pct(c.wins / c.games)}</span></div>`
-  ).join('');
+
+  // ── Champion rows: portrait, games bar, win rate ──────────────────
+  const maxGames = Math.max(...s.mainChamps.map(c => c.games), 1);
+  $('mainChamps').innerHTML = s.mainChamps.map(c => {
+    const wr = c.wins / c.games;
+    const col = wr >= 0.5 ? 'var(--green)' : 'var(--red)';
+    return `<div class="cr">
+      <img class="cr-img" loading="lazy" alt="" src="${champIcon(c.champion)}" onerror="this.classList.add('miss')">
+      <div class="cr-mid">
+        <div class="cr-top">
+          <span class="cr-name">${escapeHtml(c.champion)}</span>
+          <span class="cr-g">${c.games} ${tPlural('gamesShort', c.games)}</span>
+        </div>
+        <div class="cr-bar"><i style="width:${Math.round(c.games / maxGames * 100)}%"></i></div>
+      </div>
+      <div class="cr-end">
+        <span class="cr-wr" style="color:${col}">${pct(wr)}</span>
+        <span class="cr-wrbar"><i style="width:${Math.round(wr * 100)}%;background:${col}"></i></span>
+      </div>
+    </div>`;
+  }).join('');
+
   // Progress vs the player's own previous sessions (needs 2+ analyses).
+  // The bar follows `better`, the number keeps the real sign — so "deaths
+  // −20%" reads as green, which is what it means.
   if (data.progress && data.progress.length) {
     $('progressBox').hidden = false;
-    $('progressChips').innerHTML = data.progress.map(p => {
-      const arrow = p.better ? '↑' : '↓';
-      const color = p.better ? 'var(--green)' : 'var(--red)';
-      return `<div class="champ"><b>${tMetric(p.key)}</b><span class="cwr">` +
-        `${fmtMetric(p.key, p.from)} → <span style="color:${color}">${fmtMetric(p.key, p.to)} ${arrow}</span></span></div>`;
-    }).join('');
+    $('progressChips').innerHTML = data.progress.map(p => patternRow({
+      label: tMetric(p.key),
+      num: `${fmtMetric(p.key, p.from)} → ${fmtMetric(p.key, p.to)}`,
+      shown: p.delta,
+      better: p.better,
+    })).join('');
   } else {
     $('progressBox').hidden = true;
   }
@@ -95,19 +157,23 @@ function render(data) {
     $('roleNote').textContent = t('noRanked');
   }
 
-  // Weakness chips
-  $('chips').innerHTML = data.weaknesses.gaps.map(g => {
-    const worse = g.gap > 0;
-    return `<div class="chip"><span class="k">${tMetric(g.key)}:</span> ` +
-      `<span class="v" style="color:${worse ? 'var(--red)' : 'var(--green)'}">${fmtMetric(g.key, g.player)}</span> ` +
-      `<span class="t">→ ${t('target')} ${fmtMetric(g.key, g.target)}</span></div>`;
-  }).join('');
+  // Personal patterns: distance from the benchmark for the player's rank.
+  // g.gap is positive when the player is behind it, so flip it for display.
+  $('chips').innerHTML = data.weaknesses.gaps.map(g => patternRow({
+    label: tMetric(g.key),
+    num: `${fmtMetric(g.key, g.player)} → ${fmtMetric(g.key, g.target)}`,
+    title: `${t('target')} ${fmtMetric(g.key, g.target)}`,
+    shown: -g.gap,
+    better: g.gap <= 0,
+  })).join('');
 
   // Coaching text — localize the offline template; LLM output is already localized.
   const coachText = data.weaknesses.coachSource === 'template'
     ? templateCoach(data.weaknesses.gaps, data.weaknesses.role || s.mainRole)
     : data.weaknesses.coachText;
+  // The LLM writes **bold** markdown; render it instead of printing asterisks.
   $('coachText').innerHTML = escapeHtml(coachText)
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
     .replace(/(\d+(?:\.\d+)?%?)/g, '<span class="num">$1</span>');
   $('coachSource').textContent = data.weaknesses.coachSource === 'template'
     ? t('coachLocal')
@@ -115,13 +181,15 @@ function render(data) {
 
   // Game list
   $('gamesCount').textContent = data.games.length;
+  $('gamesWord').textContent = tPlural('lastPost', data.games.length);
   $('gamesList').innerHTML = data.games.map(g => {
     const cls = g.win ? 'win' : 'loss';
     const kda = `${g.kills}/${g.deaths}/${g.assists}`;
     const result = g.win ? t('win') : t('loss');
     return `<div class="game-row ${cls}">
       <div class="bar"></div>
-      <div class="g-main"><b>${g.champion}</b><span>${tRole(g.role)} · ${result}${g.remake ? ' · ' + t('remake') : ''}</span></div>
+      <img class="g-img" loading="lazy" alt="" src="${champIcon(g.champion)}" onerror="this.classList.add('miss')">
+      <div class="g-main"><b>${escapeHtml(g.champion)}</b><span>${tRole(g.role)} · ${result}${g.remake ? ' · ' + t('remake') : ''}</span></div>
       <div class="g-kda">${kda}</div>
       <div class="g-cs">${g.csPerMin.toFixed(1)} ${t('csm')}</div>
     </div>`;
@@ -129,6 +197,7 @@ function render(data) {
 
   stopLoading();
   $('results').hidden = false;
+  document.body.classList.add('has-results'); // reveals the side column
 }
 
 const cap = s => (s ? s.charAt(0) + s.slice(1).toLowerCase() : s);
@@ -265,6 +334,13 @@ async function loadNews() {
 function renderNews() {
   const n = lastNews;
   if (!n || (!n.patch && !(n.rotation && n.rotation.length))) { $('news').hidden = true; return; }
+  // The news payload carries the live Data Dragon version — reuse it for the
+  // champion portraits, and repaint a result that was drawn with the old one.
+  if (n.patch && n.patch !== ddPatch) {
+    ddPatch = n.patch;
+    localStorage.setItem('lolcoach_ddpatch', ddPatch);
+    if (lastData && $('loading').hidden) render(lastData); // never cut a run short
+  }
   let html = '';
   if (n.patch) html += `<p class="news-line"><span class="muted">${t('patch')}:</span> <b>${n.patch}</b></p>`;
   if (n.rotation && n.rotation.length) {

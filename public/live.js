@@ -95,14 +95,26 @@ let lastAi = null;
 // after that window closed.
 function deadSignature() {
   const dead = lastLive?.ctx?.deadEnemies || [];
-  return dead.map(e => e.champion).sort().join(',');
+  // Event count included: a kill, an objective or a purchase should refresh the
+  // advice too, not only someone being dead. Without it the tip lagged behind
+  // fights and felt stale in the late game.
+  const events = lastLive?.ctx?.timeline?.all?.length || 0;
+  return dead.map(e => e.champion).sort().join(',') + '|e' + events;
 }
 
-async function loadAiTip() {
+// A teamfight can produce several events per poll; without a floor between
+// requests a chaotic minute would spend a dozen AI calls out of a daily budget.
+let lastTipAt = 0;
+const MIN_TIP_GAP = 15000;
+
+async function loadAiTip(force = false) {
   if (!ovOpts.ai) return;
+  if (!force && Date.now() - lastTipAt < MIN_TIP_GAP) return;
+  lastTipAt = Date.now();
   try {
     const sit = encodeURIComponent(deadSignature());
-    const d = await (await fetch(`/api/live-coach?bucket=${bucket}&lang=${getLang()}&sit=${sit}`)).json();
+    const hot = (lastLive?.ctx?.deadEnemies || []).length ? 1 : 0;
+    const d = await (await fetch(`/api/live-coach?bucket=${bucket}&lang=${getLang()}&sit=${sit}&hot=${hot}`)).json();
     if (!d.inGame || !d.ready) { lastAi = null; return; }
     lastAi = d;
     renderAiTip();
@@ -172,7 +184,7 @@ if (new URLSearchParams(location.search).get('overlay') === '1') {
   bind('optNudges', 'checked', 'nudges', 'change');
   bind('optAi', 'checked', 'ai', 'change');
   // Switching AI back on should fill the card now, not at the next 60s tick.
-  $('optAi').addEventListener('change', () => { if (ovOpts.ai) loadAiTip(); });
+  $('optAi').addEventListener('change', () => { if (ovOpts.ai) loadAiTip(true); });
   applyOpts();
 }
 
@@ -187,11 +199,11 @@ document.addEventListener('langchange', () => {
   $('aiTip').textContent = t('aiWait');
   matchupLoadedFor = null;      // re-fetch the matchup brief in the new language
   $('cardMatchup').hidden = true;
-  if (lastLive) { render(lastLive); loadAiTip(); }
+  if (lastLive) { render(lastLive); loadAiTip(true); }
   else poll();
 });
 
 poll();
 setInterval(poll, 5000);
-loadAiTip();
+loadAiTip(true);
 setInterval(loadAiTip, 30000); // twice a minute — fresh vision tips get picked up fast

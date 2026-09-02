@@ -41,23 +41,23 @@ const LANGS = {
     tagline: 'Аналізує твої останні 20 ранкед-ігор і показує 3 речі, які <em>тобі</em> варто виправити.',
     liveLink: '⚡ Live-компаньйон у грі (бета)',
     placeholder: 'Нік#ТЕГ  (напр. Faker#KR1)',
-    analyze: 'Аналіз', wrLabel: 'вінрейт · останні', fixesTitle: '3 речі, які варто виправити',
+    analyze: 'Аналізувати', wrLabel: 'вінрейт · останні', fixesTitle: '3 речі, які тобі варто виправити',
     target: 'ціль', lastPre: 'Останні', lastPost: 'ігор',
     footer: 'Офіційне Riot API · лише післяматчевий коучинг · не пов’язано з Riot Games',
     coachLocal: 'текст згенеровано з локального шаблону (AI недоступний)',
     coachBy: 'коучинг від', roleMixed: '⚠ Ти граєш кілька ролей, тож показники усереднені — читай поради, орієнтуючись на свою основну роль.',
     noRanked: 'ℹ Ранкед-ігор не знайдено — аналізую твої останні ігри будь-якого режиму.',
     errFormat: 'Введи Riot ID у форматі Нік#ТЕГ (напр. Faker#KR1).', errServer: 'Не вдалося зв’язатися із сервером. Він запущений?',
-    errFail: 'Не вдалося виконати аналіз.', unranked: 'Без рангу', mostly: 'переважно', csm: 'кс/хв',
+    errFail: 'Не вдалося виконати аналіз.', unranked: 'Без рангу', mostly: 'переважно', csm: 'КС/хв',
     win: 'Перемога', loss: 'Поразка', remake: 'ремейк', onTrack: 'Ти на правильному шляху — так тримати! 👍',
-    loading: ['шукаю твій акаунт…', 'читаю останні 20 ігор…', 'рахую твої числа…', 'порівнюю з твоїм рангом…', 'пишу коучинг…'],
+    loading: ['шукаю твій акаунт…', 'читаю останні 20 ігор…', 'рахую твою статистику…', 'порівнюю з твоїм рангом…', 'пишу коучинг…'],
     roles: { TOP: 'Топ', JUNGLE: 'Ліс', MIDDLE: 'Мід', BOTTOM: 'АДК', UTILITY: 'Сапорт' },
     liveTitle: 'Live-компаньйон', liveTagline: 'Підказки в грі з офіційного Live Client Data API · <em>лише інформаційно</em>',
     rankTier: 'Твій ранг:', tierLow: 'Залізо–Срібло', tierMid: 'Золото–Платина', tierHigh: 'Смарагд+',
     waiting: 'Очікую гру… запусти League і зайди в матч.', detected: 'Гру виявлено — завантажую дані…',
-    noServer: 'Немає зв’язку із сервером коуча. Він запущений?', rightNow: 'Просто зараз',
-    statKDA: 'KDA', statCS: 'КС', statVision: 'Віжн', statGold: 'Золото', backLink: '← післяматчевий аналіз',
-    liveFooter: 'Безпечно за ToS: лише читання, без автоматизації. Відкривай на 2-му моніторі або у вікні.',
+    noServer: 'Немає зв’язку із сервером коуча. Він запущений?', rightNow: 'Зараз',
+    statKDA: 'KDA', statCS: 'КС', statVision: 'Огляд', statGold: 'Золото', backLink: '← післяматчевий аналіз',
+    liveFooter: 'Не порушує ToS: лише читання, без автоматизації. Тримай на другому моніторі або грай у віконному режимі.',
   },
   fr: {
     tagline: 'Analyse tes 20 dernières parties classées et te dit les 3 choses que <em>tu</em> dois corriger.',
@@ -324,7 +324,7 @@ for (const l in EXTRA) Object.assign(LANGS[l], EXTRA[l]);
 // Overlay settings panel labels.
 const SET_STR = {
   en: { setTitle: 'Settings', setOpacity: 'Opacity', setSize: 'Size', setStats: 'Stats', setNudges: 'Nudges', setAi: 'AI tip', setPin: 'Pin the widget (lock position)' },
-  uk: { setTitle: 'Налаштування', setOpacity: 'Прозорість', setSize: 'Розмір', setStats: 'Статистика', setNudges: 'Підказки', setAi: 'AI-порада', setPin: 'Закріпити віджет' },
+  uk: { setTitle: 'Налаштування', setOpacity: 'Прозорість', setSize: 'Розмір', setStats: 'Статистика', setNudges: 'Підказки', setAi: 'AI-порада', setPin: 'Закріпити віджет (зафіксувати позицію)' },
   fr: { setTitle: 'Paramètres', setOpacity: 'Opacité', setSize: 'Taille', setStats: 'Stats', setNudges: 'Conseils', setAi: 'Conseil IA', setPin: 'Épingler le widget' },
   de: { setTitle: 'Einstellungen', setOpacity: 'Deckkraft', setSize: 'Größe', setStats: 'Stats', setNudges: 'Hinweise', setAi: 'KI-Tipp', setPin: 'Widget anheften' },
   es: { setTitle: 'Ajustes', setOpacity: 'Opacidad', setSize: 'Tamaño', setStats: 'Stats', setNudges: 'Consejos', setAi: 'Consejo IA', setPin: 'Fijar el widget' },
@@ -341,7 +341,7 @@ for (const l in SET_STR) Object.assign(LANGS[l], SET_STR[l]);
 
 // Pre-game matchup briefing card.
 const MATCHUP_STR = {
-  en: { matchupTitle: 'Matchup brief', keyMissing: 'Missing API key:', err_notFound: 'Player or matches not found — check the Riot ID and region.', err_keyRejected: 'Riot API key was rejected. Dev keys expire every 24h — regenerate it.', err_rateLimited: 'Riot rate limit hit. Wait a moment and try again.', navBuilds: 'Builds', buildsTitle: 'Builds & strategy', buildsTag: 'Current-patch build and game plan for any champion, looked up on the web.', buildsChamp: 'Champion', buildsVs: 'vs (optional)', buildsSearch: 'Search', buildsLoading: 'reading current guides…', buildsFromWeb: 'from a live web search', buildsFromModel: 'from the model (no web search available)', buildsFailed: 'Could not fetch a build right now.' }, uk: { matchupTitle: 'Матчап-брифінг', keyMissing: 'Не вистачає API-ключа:', err_notFound: 'Гравця або матчі не знайдено — перевір Riot ID і регіон.', err_keyRejected: 'Riot відхилив ключ. Dev-ключі живуть 24 год — перегенеруй його.', err_rateLimited: 'Ліміт запитів Riot. Зачекай трохи і спробуй ще.', navBuilds: 'Білди', buildsTitle: 'Білди і стратегія', buildsTag: 'Актуальний білд і план на гру для будь-якого чемпіона — знайдено в інтернеті.', buildsChamp: 'Чемпіон', buildsVs: 'проти (необов’язково)', buildsSearch: 'Пошук', buildsLoading: 'читаю актуальні гайди…', buildsFromWeb: 'з живого пошуку в інтернеті', buildsFromModel: 'від моделі (без веб-пошуку)', buildsFailed: 'Не вдалося отримати білд зараз.' },
+  en: { matchupTitle: 'Matchup brief', keyMissing: 'Missing API key:', err_notFound: 'Player or matches not found — check the Riot ID and region.', err_keyRejected: 'Riot API key was rejected. Dev keys expire every 24h — regenerate it.', err_rateLimited: 'Riot rate limit hit. Wait a moment and try again.', navBuilds: 'Builds', buildsTitle: 'Builds & strategy', buildsTag: 'Current-patch build and game plan for any champion, looked up on the web.', buildsChamp: 'Champion', buildsVs: 'vs (optional)', buildsSearch: 'Search', buildsLoading: 'reading current guides…', buildsFromWeb: 'from a live web search', buildsFromModel: 'from the model (no web search available)', buildsFailed: 'Could not fetch a build right now.' }, uk: { matchupTitle: 'Розбір матчапу', keyMissing: 'Бракує API-ключа:', err_notFound: 'Гравця або матчі не знайдено — перевір Riot ID і регіон.', err_keyRejected: 'Riot відхилив ключ. Dev-ключі діють лише 24 години — згенеруй новий.', err_rateLimited: 'Досягнуто ліміт запитів до Riot. Зачекай трохи і спробуй ще раз.', navBuilds: 'Білди', buildsTitle: 'Білди і стратегія', buildsTag: 'Актуальний білд і план на гру для будь-якого чемпіона — знайдено в інтернеті.', buildsChamp: 'Чемпіон', buildsVs: 'проти (необов’язково)', buildsSearch: 'Пошук', buildsLoading: 'читаю актуальні гайди…', buildsFromWeb: 'з живого пошуку в інтернеті', buildsFromModel: 'від моделі (без веб-пошуку)', buildsFailed: 'Не вдалося отримати білд зараз.' },
   fr: { matchupTitle: 'Brief de matchup', keyMissing: 'Clé API manquante :', err_notFound: 'Joueur ou parties introuvables — vérifie le Riot ID et la région.', err_keyRejected: 'Clé API Riot rejetée. Les clés dev expirent toutes les 24 h — régénère-la.', err_rateLimited: 'Limite de requêtes Riot atteinte. Réessaie dans un instant.', navBuilds: 'Builds', buildsTitle: 'Builds et stratégie', buildsTag: 'Build du patch actuel et plan de jeu pour n’importe quel champion, cherchés sur le web.', buildsChamp: 'Champion', buildsVs: 'contre (optionnel)', buildsSearch: 'Rechercher', buildsLoading: 'lecture des guides actuels…', buildsFromWeb: 'depuis une recherche web', buildsFromModel: 'depuis le modèle (sans recherche web)', buildsFailed: 'Impossible de récupérer un build pour l’instant.' }, de: { matchupTitle: 'Matchup-Briefing', keyMissing: 'Fehlender API-Schlüssel:', err_notFound: 'Spieler oder Spiele nicht gefunden — prüfe Riot-ID und Region.', err_keyRejected: 'Riot-API-Schlüssel abgelehnt. Dev-Keys laufen alle 24 h ab — neu erzeugen.', err_rateLimited: 'Riot-Ratenlimit erreicht. Warte kurz und versuch es erneut.', navBuilds: 'Builds', buildsTitle: 'Builds & Strategie', buildsTag: 'Build des aktuellen Patches und Spielplan für jeden Champion, im Web nachgeschlagen.', buildsChamp: 'Champion', buildsVs: 'gegen (optional)', buildsSearch: 'Suchen', buildsLoading: 'lese aktuelle Guides…', buildsFromWeb: 'aus einer Websuche', buildsFromModel: 'vom Modell (keine Websuche)', buildsFailed: 'Build konnte gerade nicht geladen werden.' },
   es: { matchupTitle: 'Guía del matchup', keyMissing: 'Falta la clave API:', err_notFound: 'Jugador o partidas no encontrados — revisa el Riot ID y la región.', err_keyRejected: 'Riot rechazó la clave. Las claves dev caducan cada 24 h — regenérala.', err_rateLimited: 'Límite de peticiones de Riot. Espera un momento e inténtalo de nuevo.', navBuilds: 'Builds', buildsTitle: 'Builds y estrategia', buildsTag: 'Build del parche actual y plan de juego para cualquier campeón, buscado en la web.', buildsChamp: 'Campeón', buildsVs: 'contra (opcional)', buildsSearch: 'Buscar', buildsLoading: 'leyendo guías actuales…', buildsFromWeb: 'de una búsqueda web', buildsFromModel: 'del modelo (sin búsqueda web)', buildsFailed: 'No se pudo obtener el build ahora mismo.' }, pl: { matchupTitle: 'Brief matchupu', keyMissing: 'Brak klucza API:', err_notFound: 'Nie znaleziono gracza lub gier — sprawdź Riot ID i region.', err_keyRejected: 'Riot odrzucił klucz. Klucze dev wygasają co 24 h — wygeneruj nowy.', err_rateLimited: 'Limit zapytań Riot. Poczekaj chwilę i spróbuj ponownie.', navBuilds: 'Buildy', buildsTitle: 'Buildy i strategia', buildsTag: 'Build z aktualnego patcha i plan gry dla dowolnej postaci, wyszukane w sieci.', buildsChamp: 'Postać', buildsVs: 'przeciw (opcjonalnie)', buildsSearch: 'Szukaj', buildsLoading: 'czytam aktualne poradniki…', buildsFromWeb: 'z wyszukiwania w sieci', buildsFromModel: 'z modelu (bez wyszukiwania)', buildsFailed: 'Nie udało się pobrać buildu.' },
   pt: { matchupTitle: 'Guia do confronto', keyMissing: 'Falta a chave de API:', err_notFound: 'Jogador ou partidas não encontrados — verifique o Riot ID e a região.', err_keyRejected: 'A Riot rejeitou a chave. Chaves dev expiram a cada 24 h — gere outra.', err_rateLimited: 'Limite de requisições da Riot. Aguarde um momento e tente de novo.', navBuilds: 'Builds', buildsTitle: 'Builds e estratégia', buildsTag: 'Build do patch atual e plano de jogo para qualquer campeão, buscados na web.', buildsChamp: 'Campeão', buildsVs: 'contra (opcional)', buildsSearch: 'Buscar', buildsLoading: 'lendo guias atuais…', buildsFromWeb: 'de uma busca na web', buildsFromModel: 'do modelo (sem busca na web)', buildsFailed: 'Não foi possível obter a build agora.' }, ru: { matchupTitle: 'Матчап-брифинг', keyMissing: 'Не хватает API-ключа:', err_notFound: 'Игрок или матчи не найдены — проверь Riot ID и регион.', err_keyRejected: 'Riot отклонил ключ. Dev-ключи живут 24 ч — перегенерируй его.', err_rateLimited: 'Лимит запросов Riot. Подожди немного и попробуй снова.', navBuilds: 'Билды', buildsTitle: 'Билды и стратегия', buildsTag: 'Актуальный билд и план на игру для любого чемпиона — найдено в интернете.', buildsChamp: 'Чемпион', buildsVs: 'против (необязательно)', buildsSearch: 'Поиск', buildsLoading: 'читаю актуальные гайды…', buildsFromWeb: 'из живого поиска в интернете', buildsFromModel: 'от модели (без веб-поиска)', buildsFailed: 'Не удалось получить билд сейчас.' },
@@ -354,7 +354,7 @@ for (const l in MATCHUP_STR) Object.assign(LANGS[l], MATCHUP_STR[l]);
 // Desktop launcher bar (only shown when Electron hosts the page).
 const LB_STR = {
   en: { lbInGame: 'In game — widget active', lbNoGame: 'Waiting for a game', lbShowWidget: 'Show widget', lbHideWidget: 'Hide widget' },
-  uk: { lbInGame: 'У грі — віджет активний', lbNoGame: 'Очікую гру', lbShowWidget: 'Показати віджет', lbHideWidget: 'Сховати віджет' },
+  uk: { lbInGame: 'У грі — віджет активний', lbNoGame: 'Очікую гру', lbShowWidget: 'Показати віджет', lbHideWidget: 'Приховати віджет' },
   fr: { lbInGame: 'En partie — widget actif', lbNoGame: 'En attente d’une partie', lbShowWidget: 'Afficher le widget', lbHideWidget: 'Masquer le widget' },
   de: { lbInGame: 'Im Spiel — Widget aktiv', lbNoGame: 'Warte auf ein Spiel', lbShowWidget: 'Widget zeigen', lbHideWidget: 'Widget ausblenden' },
   es: { lbInGame: 'En partida — widget activo', lbNoGame: 'Esperando una partida', lbShowWidget: 'Mostrar widget', lbHideWidget: 'Ocultar widget' },
@@ -380,6 +380,27 @@ const PROGRESS_STR = {
   vi: { progressTitle: 'Tiến bộ so với các phiên gần đây' },
 };
 for (const l in PROGRESS_STR) Object.assign(LANGS[l], PROGRESS_STR[l]);
+
+// Result-page card titles and stat labels (launcher layout).
+const CARD_STR = {
+  en: { ratingsTitle: 'Personal ratings', patternsTitle: 'Personal patterns', formTitle: 'Recent form', championsTitle: 'Champions', playedLabel: 'Played', winsLabel: 'Wins', lossesLabel: 'Losses', gamesShort: 'games' },
+  uk: { ratingsTitle: 'Твій рейтинг', patternsTitle: 'Твої патерни', formTitle: 'Поточна форма', championsTitle: 'Чемпіони', playedLabel: 'Зіграно', winsLabel: 'Перемог', lossesLabel: 'Поразок', gamesShort: 'ігор',
+        winsLabel1: 'Перемога', winsLabel2: 'Перемоги', lossesLabel1: 'Поразка', lossesLabel2: 'Поразки', gamesShort1: 'гра', gamesShort2: 'гри', lastPost1: 'гра', lastPost2: 'гри' },
+  fr: { ratingsTitle: 'Classement personnel', patternsTitle: 'Tendances personnelles', formTitle: 'Forme récente', championsTitle: 'Champions', playedLabel: 'Jouées', winsLabel: 'Victoires', lossesLabel: 'Défaites', gamesShort: 'parties' },
+  de: { ratingsTitle: 'Deine Wertung', patternsTitle: 'Persönliche Muster', formTitle: 'Aktuelle Form', championsTitle: 'Champions', playedLabel: 'Gespielt', winsLabel: 'Siege', lossesLabel: 'Niederlagen', gamesShort: 'Spiele' },
+  es: { ratingsTitle: 'Clasificación personal', patternsTitle: 'Patrones personales', formTitle: 'Forma reciente', championsTitle: 'Campeones', playedLabel: 'Jugadas', winsLabel: 'Victorias', lossesLabel: 'Derrotas', gamesShort: 'partidas' },
+  pl: { ratingsTitle: 'Twój ranking', patternsTitle: 'Twoje wzorce', formTitle: 'Ostatnia forma', championsTitle: 'Bohaterowie', playedLabel: 'Rozegrane', winsLabel: 'Wygranych', lossesLabel: 'Przegranych', gamesShort: 'gier',
+        winsLabel1: 'Wygrana', winsLabel2: 'Wygrane', lossesLabel1: 'Przegrana', lossesLabel2: 'Przegrane', gamesShort1: 'gra', gamesShort2: 'gry', lastPost1: 'gra', lastPost2: 'gry' },
+  pt: { ratingsTitle: 'Classificação pessoal', patternsTitle: 'Padrões pessoais', formTitle: 'Forma recente', championsTitle: 'Campeões', playedLabel: 'Jogadas', winsLabel: 'Vitórias', lossesLabel: 'Derrotas', gamesShort: 'partidas' },
+  ru: { ratingsTitle: 'Твой рейтинг', patternsTitle: 'Твои паттерны', formTitle: 'Текущая форма', championsTitle: 'Чемпионы', playedLabel: 'Сыграно', winsLabel: 'Побед', lossesLabel: 'Поражений', gamesShort: 'игр',
+        winsLabel1: 'Победа', winsLabel2: 'Победы', lossesLabel1: 'Поражение', lossesLabel2: 'Поражения', gamesShort1: 'игра', gamesShort2: 'игры', lastPost1: 'игра', lastPost2: 'игры' },
+  tr: { ratingsTitle: 'Kişisel derece', patternsTitle: 'Kişisel örüntüler', formTitle: 'Son form', championsTitle: 'Şampiyonlar', playedLabel: 'Oynanan', winsLabel: 'Galibiyet', lossesLabel: 'Mağlubiyet', gamesShort: 'maç' },
+  ko: { ratingsTitle: '내 랭크', patternsTitle: '개인 패턴', formTitle: '최근 성적', championsTitle: '챔피언', playedLabel: '판수', winsLabel: '승', lossesLabel: '패', gamesShort: '게임' },
+  zh: { ratingsTitle: '个人段位', patternsTitle: '个人特点', formTitle: '近期状态', championsTitle: '英雄', playedLabel: '场次', winsLabel: '胜', lossesLabel: '负', gamesShort: '场' },
+  ja: { ratingsTitle: '個人ランク', patternsTitle: '個人の傾向', formTitle: '最近の成績', championsTitle: 'チャンピオン', playedLabel: '試合数', winsLabel: '勝', lossesLabel: '敗', gamesShort: '戦' },
+  vi: { ratingsTitle: 'Xếp hạng cá nhân', patternsTitle: 'Đặc điểm cá nhân', formTitle: 'Phong độ gần đây', championsTitle: 'Tướng', playedLabel: 'Đã chơi', winsLabel: 'Thắng', lossesLabel: 'Thua', gamesShort: 'trận' },
+};
+for (const l in CARD_STR) Object.assign(LANGS[l], CARD_STR[l]);
 
 // AI live-recommendation strings.
 const AI_STR = {
@@ -429,12 +450,12 @@ const TIPS = {
     dmgPerMin: 'Reposition to hit the front line safely each fight instead of chasing kills you cannot reach.',
   },
   uk: {
-    csPerMin: 'Постав собі ціль по фарму й добивай міньйонів до першого повернення — не втрачай їх навіть під час розмінів.',
-    csPerMinJungle: 'Забирай кемпи на респавні — фулклір між діями це безкоштовне золото, яке ти лишаєш у лісі.',
-    visPerMin: 'Використовуй обидва заряди тотема, щойно вони готові, і прибирай хоча б один ворожий вард за кожне повернення.',
+    csPerMin: 'Постав собі норму фарму й добивай міньйонів до першого повернення на базу — не пропускай їх навіть під час розмінів.',
+    csPerMinJungle: 'Забирай кемпи, щойно вони відроджуються: повний зачист лісу між діями — це безкоштовне золото, яке ти просто там лишаєш.',
+    visPerMin: 'Використовуй обидва заряди тотема, щойно вони готові, і прибирай хоча б один ворожий вард щоразу, коли повертаєшся на базу.',
     kp: 'Збирайся з командою на об’єкти: виходь з лінії на повільному пуші й приєднуйся до бійок ще до їхнього початку.',
-    deaths: 'Перед кожним розміном питай себе «що мене тут може вбити?», зважай на кулдауни ворога і став вард, перш ніж пушити.',
-    goldPerMin: 'Менше простоюй: повертайся з чіткою метою й одразу забирай хвилю — час без діла це втрачене золото.',
+    deaths: 'Перед кожною дією питай себе «що мене тут може вбити?», зважай на кулдауни ворога і став вард, перш ніж пушити.',
+    goldPerMin: 'Менше простоюй: повертайся на базу з чіткою метою й одразу забирай хвилю. Час без діла — це втрачене золото.',
     dmgPerMin: 'Займай позицію так, щоб безпечно бити передню лінію, а не гнатися за вбивствами, яких усе одно не дістанеш.',
   },
   fr: {
@@ -553,15 +574,15 @@ const NUDGES_LATE = {
     midFocus: 'Mid game: take vision before objectives and look for a pick instead of forcing a 5v5.',
   },
   uk: {
-    deathTimer: 'Ти мертвий {sec}с — пінгуй команду відійти, щоб не віддати барона задарма.',
-    soulPointThem: 'Ворогу лишився один дракон до Душі — цей дракон вирішує гру. Став огляд заздалегідь.',
-    soulPointUs: 'Тобі лишився один дракон до Душі — постав огляд біля ями до респауну.',
-    inhibDown: 'Твій інгібітор впав — прибери суперміньйонів, перш ніж збиратися, бо втратите базу.',
-    fedEnemy: '{champ} має {k}/{d} — бийся лише з-за спини танка, тримай його в полі зору і заходь тільки після того, як він витратить ривок чи ульту.',
-    behindLevels: 'Ти на {n} рівні позаду — фарми бічні хвилі замість того, щоб лізти в бійки.',
-    visionLate: 'Без огляду в пізній грі тебе спіймають — чисти варди перед бароном, не ходи наосліп.',
-    lateGroup: 'Пізня гра: не ходи сам. Тримайся команди, вардь барона й бийся лише з оглядом.',
-    midFocus: 'Середина гри: став огляд перед об’єктами й шукай пік замість forced 5в5.',
+    deathTimer: 'Ти мертвий {sec}с — пінгуй команді відступити, щоб не віддати барона задарма.',
+    soulPointThem: 'Ворогу лишився один дракон до Душі — цей дракон вирішує гру. Постав огляд заздалегідь.',
+    soulPointUs: 'Тобі лишився один дракон до Душі — постав огляд біля ями ще до появи дракона.',
+    inhibDown: 'Твій інгібітор зруйновано — прибери суперміньйонів, перш ніж збиратися, інакше втратите базу.',
+    fedEnemy: '{champ} має рахунок {k}/{d} — бийся лише з-за спини танка, тримай його в полі зору і заходь тільки після того, як він витратить ривок чи ульту.',
+    behindLevels: 'Відставання в рівнях: {n} — фарми бічні хвилі замість того, щоб лізти в бійки.',
+    visionLate: 'Без огляду в пізній грі тебе спіймають — зчищай ворожі варди перед бароном і не ходи наосліп.',
+    lateGroup: 'Пізня гра: не ходи сам. Тримайся команди, став варди біля барона й бийся лише з оглядом.',
+    midFocus: 'Середина гри: постав огляд перед об’єктами й шукай пік замість того, щоб форсити 5в5.',
   },
   fr: {
     deathTimer: 'Tu es mort {sec}s — ping ton équipe de reculer, ne leur offre pas le Baron.',
@@ -604,7 +625,7 @@ const NUDGES_LATE = {
     fedEnemy: '{champ} ma {k}/{d} — walcz zza swojej pierwszej linii, miej go na ekranie i wchodź dopiero, gdy zużyje dash lub ulti.',
     behindLevels: 'Jesteś {n} poziomy do tyłu — bierz bezpieczne boczne fale zamiast walk.',
     visionLate: 'Brak wizji w late to złapanie — czyść przed Baronem, nie chodź na ślepo.',
-    lateGroup: 'Late game: nie daj się złapać samemu. Grupuj się, waarduj Barona, walcz z wizją.',
+    lateGroup: 'Late game: nie daj się złapać samemu. Grupuj się, warduj Barona, walcz z wizją.',
     midFocus: 'Mid game: postaw wizję przed celami i szukaj picka zamiast wymuszać 5v5.',
   },
   pt: {
@@ -703,13 +724,13 @@ const NUDGES = {
   uk: {
     csPace: 'Темп фарму низький — {cs}/хв замість ~{target}. Забери наступну хвилю.',
     vision: 'Мало огляду — постав вард, перш ніж пушити чи йти в туман.',
-    deaths: 'Смертей: {n} — зважай на кулдауни ворога і вардь фланги.',
-    gold: '{gold}g не витрачено — повернись на добрій хвилі й закупись.',
-    dragon: 'Дракон за ~{sec}с — став вард і рухайся туди.',
+    deaths: 'Смертей: {n} — зважай на кулдауни ворога і став варди на флангах.',
+    gold: 'Не витрачено {gold} золота — повернись на базу на добрій хвилі й закупись.',
+    dragon: 'Дракон за ~{sec}с — постав вард і рухайся туди.',
     baron: 'Барон за ~{sec}с — постав огляд навколо ями.',
-    earlyWard: 'Перше вікно ганку — постав вард на вході в лінію.',
+    earlyWard: 'Перше вікно для ганку — постав вард на вході в лінію.',
     earlyFocus: 'Ранній етап: зосередься на добиванні й грай безпечно, поки не з’явиться шанс.',
-    safeDefault: 'Грай безпечно, вардь ключові входи й бийся лише з перевагою в числі чи кулдаунах.',
+    safeDefault: 'Грай безпечно, став варди на ключових входах і бийся лише тоді, коли маєш перевагу в кількості або в кулдаунах.',
   },
   fr: {
     csPace: 'Rythme de CS bas — {cs}/min contre ~{target}. Récupère la prochaine vague.',
@@ -844,9 +865,9 @@ const NUDGES_DEEP = {
     goldBehind: "You're ~{k}k gold behind — stop forcing fights, farm side waves and wait for their mistake.",
   },
   uk: {
-    buyArmor: '{n} ворогів б’ють фізичною шкодою, а в тебе лише {armor} броні — купи броню наступного разу.',
-    buyMR: '{n} ворогів б’ють магією, а в тебе лише {mr} магічного опору — купи опір наступного разу.',
-    nemesis: '{champ} вбив тебе {n} рази — грай на протилежному від нього боці мапи і бийся лише коли між вами стоїть союзник.',
+    buyArmor: '{n} ворогів б’ють фізичною шкодою, а в тебе лише {armor} броні — купи броню на наступному поверненні.',
+    buyMR: '{n} ворогів б’ють магією, а в тебе лише {mr} магічного опору — купи магічний опір на наступному поверненні.',
+    nemesis: 'Смертей від {champ}: {n} — грай на протилежному від нього боці мапи і вступай у бійку лише тоді, коли між вами стоїть союзник.',
     goldBehind: 'Ти відстаєш на ~{k}к золота — не форси бійки, фарми бічні хвилі й чекай на їхню помилку.',
   },
   fr: {
@@ -907,7 +928,7 @@ const NUDGES_DEEP = {
     buyArmor: '敵{n}人が物理ダメージなのに防御力が{armor}しかない——次のリコールで防具を買え。',
     buyMR: '敵{n}人が魔法ダメージなのに魔法防御が{mr}しかない——次のリコールでMRを買え。',
     nemesis: '{champ}に{n}回倒されている——マップの反対側でプレイし、間に味方がいる時だけ戦え。',
-    goldBehind: 'ゴールドで約{k}k負けている——無理に戦わず、サイドを farm して相手のミスを待て。',
+    goldBehind: 'ゴールドで約{k}k負けている——無理に戦わず、サイドをファームして相手のミスを待て。',
   },
   vi: {
     buyArmor: '{n} kẻ địch gây sát thương vật lý mà bạn chỉ có {armor} giáp — hãy mua giáp lần về sau.',
@@ -928,9 +949,9 @@ const NUDGES_ROLE = {
     earlyFocusSupport: 'Early game: ward the lane entrances, keep your ADC healthy, and roam mid when your wave is shoved.',
   },
   uk: {
-    campPace: 'Повільно фармиш ліс — {cs}/хв замість ~{target}. Забирай кемпи, щойно вони респавняться.',
-    earlyFocusJungle: 'Ранній етап: роби фулклір, слідкуй за ворожим лісником і ганкай лінію, де є контроль.',
-    earlyFocusSupport: 'Ранній етап: вардь входи в лінію, тримай АДК при здоров’ї і роум на мід, коли хвиля запушена.',
+    campPace: 'Повільно фармиш ліс — {cs}/хв замість ~{target}. Забирай кемпи, щойно вони відроджуються.',
+    earlyFocusJungle: 'Ранній етап: роби повний зачист лісу, стеж за ворожим лісником і ганкай ту лінію, де є контроль.',
+    earlyFocusSupport: 'Ранній етап: став варди на входах у лінію, бережи здоров’я свого АДК і роуми на мід, коли хвиля запушена.',
   },
   fr: {
     campPace: 'Clear de camps lent — {cs}/min contre ~{target}. Reprends tes camps dès qu’ils réapparaissent.',
@@ -1018,6 +1039,15 @@ function tRole(r) {
 function tMetric(key) {
   const L = METRIC_LABELS[_lang] || METRIC_LABELS.en;
   return L[key] || METRIC_LABELS.en[key] || key;
+}
+// Slavic counts need three forms ("1 гра", "2 гри", "5 ігор"). A language only
+// defines <key>1 / <key>2 when it needs them; everything else keeps one form.
+function tPlural(key, n) {
+  const L = LANGS[_lang] || LANGS.en;
+  const m10 = Math.abs(n) % 10, m100 = Math.abs(n) % 100;
+  if (m10 === 1 && m100 !== 11 && L[key + '1']) return L[key + '1'];
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) && L[key + '2']) return L[key + '2'];
+  return t(key);
 }
 // Render a live nudge the server sent as {code, params} in the current language.
 function tNudge(code, params) {

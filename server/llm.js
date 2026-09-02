@@ -82,6 +82,15 @@ const LANG_TERMS = {
     'ADC / bot carry = АДК (in Cyrillic, never "ADC"); support = сапорт; ultimate = ульта; dash = ривок',
     'inhibitor = інгібітор (NOT "інхібітор", NOT "інхіботор"); super minions = суперміньйони',
     'Baron buff = баф барона (NOT "баронський баф"); turret / tower = вежа; base = база; river = річка',
+    // Actual garbage this model has produced. Naming the exact mistake works
+    // better than restating the rule it already broke.
+    'NEVER write any of these, they are not Ukrainian words or are plain wrong: ' +
+      '"воронка"/"воронок" (invented, vision is огляд) · "позивний" (meaningless here) · ' +
+      '"ADC", "ADC-й" (write АДК) · "vs" (write "проти" or use a dash) · "спавн" (write поява) · ' +
+      '"dmg", "gold", "CS per min", "GPM", "DPM" (write the stat out: шкоди за хвилину, ' +
+      'золота за хвилину, КС за хвилину) · "візія"/"візій" (write огляд)',
+    'Never glue an English word to a Ukrainian ending with a hyphen. Every noun must agree with ' +
+      'its adjective in gender and number ("захисне вміння", never "захисний уміння").',
   ].map(s => '  ' + s).join('\n'),
 };
 

@@ -6,91 +6,163 @@
   <title>AI LoL Coach</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
-  <main class="wrap">
-    <header class="head">
-      <div class="langbar"><select id="lang" class="field lang" aria-label="Language"></select></div>
-      <h1>AI LoL Coach</h1>
-      <p class="tag" data-i18n="tagline" data-i18n-html>Reads your last 20 ranked games and tells you the 3 things <em>you</em> should fix.</p>
-    </header>
+<body class="lg">
+  <div class="lg-shell">
 
-    <nav class="mainnav">
-      <a href="/" class="navbtn active" data-i18n="navHome">Home</a>
-      <a href="/builds.html" class="navbtn" data-i18n="navBuilds">Builds</a>
-      <a href="/live.html" class="navbtn" data-i18n="navBot">Live Bot</a>
-    </nav>
+    <!-- ── left rail ─────────────────────────────────────────────── -->
+    <aside class="lg-side">
+      <a class="lg-brand" href="/">
+        <span class="lg-logo" aria-hidden="true">⚔</span>
+        <h1 class="lg-brand-name">AI LoL Coach</h1>
+      </a>
 
-    <div id="launcherBar" class="launcher-bar" hidden>
-      <span class="lb-status"><span class="dot on"></span><span id="lbGame"></span></span>
-      <button id="lbWidget" class="navbtn lb-btn" type="button"></button>
-    </div>
+      <nav class="lg-nav">
+        <a href="/" class="lg-item active" data-i18n-title="navHome" title="Home">
+          <svg class="lg-ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3.2 11 12 3.6 20.8 11" /><path d="M5.6 9.4V20.4h12.8V9.4" /><path d="M9.7 20.4v-5.3h4.6v5.3" />
+          </svg>
+          <span data-i18n="navHome">Home</span>
+        </a>
+        <a href="/builds.html" class="lg-item" data-i18n-title="navBuilds" title="Builds">
+          <svg class="lg-ico" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3.5" y="3.5" width="7" height="7" rx="1.6" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.6" />
+            <rect x="3.5" y="13.5" width="7" height="7" rx="1.6" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.6" />
+          </svg>
+          <span data-i18n="navBuilds">Builds</span>
+        </a>
+        <a href="/live.html" class="lg-item" data-i18n-title="navBot" title="Live Bot">
+          <svg class="lg-ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M2.6 12h4.1l2.6-7.4 4.4 15 2.6-7.6h5.1" />
+          </svg>
+          <span data-i18n="navBot">Live Bot</span>
+        </a>
+      </nav>
 
-    <p id="keyWarn" class="error key-warn" hidden></p>
-
-    <form id="form" class="controls" autocomplete="off">
-      <input id="riotId" class="field" type="text" placeholder="Name#TAG  (e.g. Faker#KR1)" data-i18n-ph="placeholder" required />
-      <select id="region" class="field region"></select>
-      <button id="save" class="btn-star" type="button" data-i18n-title="saveTip" title="Save">★</button>
-      <button id="go" class="btn" type="submit" data-i18n="analyze">Analyze</button>
-    </form>
-
-    <div id="saved" class="saved" hidden></div>
-
-    <section id="news" class="card news" hidden>
-      <div class="news-head">
-        <h3 data-i18n="newsTitle">League news</h3>
-        <a id="newsLink" class="link" target="_blank" rel="noopener" data-i18n="more">More</a>
-      </div>
-      <div id="newsBody"></div>
-    </section>
-
-    <p id="error" class="error" hidden></p>
-
-    <section id="loading" class="loading" hidden>
-      <div class="spinner"></div>
-      <p id="loadingText">reading your games…</p>
-    </section>
-
-    <section id="results" hidden>
-      <!-- Summary -->
-      <div class="card summary">
-        <div class="summary-top">
-          <div>
-            <h2 id="playerName"></h2>
-            <p id="playerRank" class="muted"></p>
-          </div>
-          <div class="wr">
-            <span id="wrValue" class="wr-num"></span>
-            <span class="wr-label"><span data-i18n="wrLabel">win rate · last</span> <span id="wrGames"></span></span>
-          </div>
+      <div class="lg-side-foot">
+        <div id="launcherBar" class="launcher-bar" hidden>
+          <span class="lb-status"><span class="dot on"></span><span id="lbGame"></span></span>
+          <button id="lbWidget" class="navbtn lb-btn" type="button"></button>
         </div>
-        <div id="mainChamps" class="champs"></div>
-        <div id="progressBox" hidden>
-          <p class="progress-label muted"><span data-i18n="progressTitle">Progress</span>:</p>
-          <div id="progressChips" class="champs"></div>
-        </div>
-        <p id="roleNote" class="mix-note" hidden></p>
+        <select id="lang" class="field lang" aria-label="Language"></select>
+        <p class="lg-legal muted" data-i18n="footer">Official Riot API · post-game coaching only · not affiliated with Riot Games</p>
       </div>
+    </aside>
 
-      <!-- The core: 3 things to fix -->
-      <div class="card fixes">
-        <h3 data-i18n="fixesTitle">Your 3 things to fix</h3>
-        <div id="chips" class="chips"></div>
-        <div id="coachText" class="coach"></div>
-        <p id="coachSource" class="source muted"></p>
+    <!-- ── main column ───────────────────────────────────────────── -->
+    <main class="lg-main">
+      <header class="lg-top">
+        <form id="form" class="lg-search" autocomplete="off">
+          <span class="lg-search-box">
+            <svg class="lg-search-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.4" /><path d="M15.6 15.6 20.4 20.4" /></svg>
+            <input id="riotId" class="field" type="text" placeholder="Name#TAG  (e.g. Faker#KR1)" data-i18n-ph="placeholder" required />
+          </span>
+          <select id="region" class="field region"></select>
+          <button id="save" class="btn-star" type="button" data-i18n-title="saveTip" title="Save">★</button>
+          <button id="go" class="btn" type="submit" data-i18n="analyze">Analyze</button>
+        </form>
+        <p class="tag" data-i18n="tagline" data-i18n-html>Reads your last 20 ranked games and tells you the 3 things <em>you</em> should fix.</p>
+        <div id="saved" class="saved" hidden></div>
+      </header>
+
+      <p id="keyWarn" class="error key-warn" hidden></p>
+      <p id="error" class="error" hidden></p>
+
+      <section id="loading" class="loading" hidden>
+        <div class="spinner"></div>
+        <p id="loadingText">reading your games…</p>
+      </section>
+
+      <div class="lg-grid">
+        <!-- main (wide) column — only exists once an analysis has run -->
+        <section id="results" class="lg-col" hidden>
+
+          <!-- Personal ratings -->
+          <div id="rankCard" class="card lg-rank">
+            <div class="card-head"><h3 data-i18n="ratingsTitle">Personal ratings</h3></div>
+            <div class="card-body lg-rank-body">
+              <div class="lg-emblem">
+                <svg viewBox="0 0 64 70" aria-hidden="true"><path d="M32 3 59 12.5v22.9C59 50 47.4 61.6 32 67 16.6 61.6 5 50 5 35.4V12.5z" /></svg>
+                <span id="rankDiv" class="lg-emblem-div"></span>
+              </div>
+              <div class="lg-rank-info">
+                <h2 id="playerName"></h2>
+                <p id="playerRank" class="lg-tier"></p>
+                <p id="rankLp" class="lg-lp"></p>
+                <p id="roleLine" class="muted lg-role"></p>
+                <div class="lg-wl">
+                  <span class="lg-wl-w"><b id="winsNum">0</b> <span id="winsWord" data-i18n="winsLabel">Wins</span></span>
+                  <span class="lg-wl-sep"></span>
+                  <span class="lg-wl-l"><b id="lossesNum">0</b> <span id="lossesWord" data-i18n="lossesLabel">Losses</span></span>
+                </div>
+                <div class="lg-wlbar"><i id="wlBar"></i></div>
+              </div>
+            </div>
+            <p id="roleNote" class="mix-note" hidden></p>
+          </div>
+
+          <!-- Personal patterns: how far each metric sits from the rank benchmark -->
+          <div class="card lg-patterns">
+            <div class="card-head"><h3 data-i18n="patternsTitle">Personal patterns</h3></div>
+            <div id="chips" class="card-body lg-bars"></div>
+          </div>
+
+          <!-- Progress vs previous sessions -->
+          <div id="progressBox" class="card lg-progress" hidden>
+            <div class="card-head"><h3 data-i18n="progressTitle">Progress</h3></div>
+            <div id="progressChips" class="card-body lg-bars"></div>
+          </div>
+
+          <!-- The core: 3 things to fix -->
+          <div class="card fixes">
+            <div class="card-head"><h3 data-i18n="fixesTitle">Your 3 things to fix</h3></div>
+            <div class="card-body">
+              <div id="coachText" class="coach"></div>
+              <p id="coachSource" class="source muted"></p>
+            </div>
+          </div>
+
+          <!-- Game list -->
+          <div class="card games">
+            <button id="gamesToggle" class="games-toggle" type="button">
+              <span><span data-i18n="lastPre">Last</span> <span id="gamesCount"></span> <span id="gamesWord" data-i18n="lastPost">games</span></span> <span class="chev">▾</span>
+            </button>
+            <div id="gamesList" class="games-list" hidden></div>
+          </div>
+        </section>
+
+        <!-- side (narrow) column -->
+        <aside class="lg-col lg-aside">
+          <div class="card lg-wrcard on-result">
+            <div class="card-head"><h3 data-i18n="formTitle">Recent form</h3></div>
+            <div class="card-body lg-wr-body">
+              <div id="wrDonut" class="lg-donut">
+                <span class="lg-donut-hole"><span id="wrValue" class="wr-num"></span></span>
+              </div>
+              <div class="lg-wr-side">
+                <b id="playedNum" class="lg-big">0</b>
+                <span class="lg-big-lbl" data-i18n="playedLabel">Played</span>
+                <span class="wr-label"><span data-i18n="wrLabel">win rate · last</span> <span id="wrGames"></span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card lg-champcard on-result">
+            <div class="card-head"><h3 data-i18n="championsTitle">Champions</h3></div>
+            <div id="mainChamps" class="card-body champs"></div>
+          </div>
+
+          <section id="news" class="card news" hidden>
+            <div class="card-head news-head">
+              <h3 data-i18n="newsTitle">League news</h3>
+              <a id="newsLink" class="link" target="_blank" rel="noopener" data-i18n="more">More</a>
+            </div>
+            <div id="newsBody" class="card-body"></div>
+          </section>
+        </aside>
       </div>
+    </main>
+  </div>
 
-      <!-- Game list -->
-      <div class="card games">
-        <button id="gamesToggle" class="games-toggle" type="button">
-          <span><span data-i18n="lastPre">Last</span> <span id="gamesCount"></span> <span data-i18n="lastPost">games</span></span> <span class="chev">▾</span>
-        </button>
-        <div id="gamesList" class="games-list" hidden></div>
-      </div>
-    </section>
-
-    <footer class="foot muted" data-i18n="footer">Official Riot API · post-game coaching only · not affiliated with Riot Games</footer>
-  </main>
   <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
