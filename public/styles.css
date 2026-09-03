@@ -240,6 +240,15 @@ body.overlay .live-stat .v { font-size: 10.5px; margin-top: 1px; }
 body.overlay .live-nudges { gap: 4px; }
 body.overlay .nudge { font-size: 11px; padding: 5px 7px; line-height: 1.35; border-radius: 5px; border-left-width: 2px; }
 body.overlay .ai-tip { font-size: 11px; line-height: 1.4; }
+/* The brief covers the whole match now, not just laning, which made it long
+   enough to stretch the overlay across the game. Cap it and let it scroll. */
+body.overlay #matchupBody { max-height: 130px; overflow-y: auto; }
+/* The brief arrives as numbered sections separated by newlines, which collapsed
+   into one run-on paragraph — you could not find the part for the phase you
+   were actually in. Keep the breaks the model wrote. */
+#matchupBody, #bBody { white-space: pre-line; }
+body.overlay #matchupBody::-webkit-scrollbar { width: 4px; }
+body.overlay #matchupBody::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
 body.overlay .status { font-size: 11px; padding: 9px; }
 
 @media (max-width: 480px) {
