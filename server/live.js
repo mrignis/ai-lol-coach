@@ -5,6 +5,7 @@ import { getChampions, isAP, getItemNames } from './ddragon.js';
 import { track } from './timeline.js';
 import { counterBuild } from './counterbuild.js';
 import { overusedItems } from './repeats.js';
+import { championBrief } from './archetype.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // League "Live Client Data API" — runs LOCALLY on the player's PC while a
@@ -107,9 +108,11 @@ async function gameContext(data, me, bucket = 'mid') {
 
   // Which damage type is actually hitting you? Drives the defensive-item call.
   let apCount = 0;
+  let champBrief = '';
   try {
     const champs = await getChampions();
     apCount = foes.filter(p => isAP(p.championName, champs)).length;
+    champBrief = championBrief(me.championName, me.position, champs);
   } catch { /* Data Dragon offline — skip itemization advice, everything else still works */ }
   const adCount = foes.length - apCount;
 
@@ -189,6 +192,8 @@ async function gameContext(data, me, bucket = 'mid') {
       ? { champion: nemesisPlayer.championName, times: killsOnMe[nemesisId] }
       : null,
     phase: gamePhase(gameTime),
+    // What this champion is FOR, not just where they stand — see archetype.js.
+    champBrief,
     // Carried so the coach can say whether the player's CS is actually behind
     // — without a target it defaulted to "farm more" even at good CS.
     bucket,

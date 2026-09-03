@@ -409,7 +409,11 @@ async function callLLM(system, user, opts = {}) {
 // Falls back to the top rule-based nudge if the LLM is unreachable.
 // Role changes what good advice even IS — a support must never hear "farm more".
 const ROLE_BRIEF = {
-  UTILITY: 'The player is the SUPPORT. NEVER advise farming minions or CS. Talk about: vision control and denying enemy wards, roaming to mid/jungle after shoving, peeling for the ADC in fights, engage/disengage timing, warding objectives 30-60s before they spawn, and staying alive (a dead support gives the enemy free vision control).',
+  // "Peeling for the ADC" used to be stated here as the support's job in a
+  // fight, which is only true of enchanters — it had the coach telling a Leona
+  // to stand behind Jinx while she was the one starting every fight. What the
+  // player does in a fight now comes from the CHAMPION ROLE line instead.
+  UTILITY: 'The player is the SUPPORT. NEVER advise farming minions or CS. Talk about: vision control and denying enemy wards, roaming to mid/jungle after shoving, what THEIR champion does in a fight (the CHAMPION ROLE line below decides this — do not assume they protect the carry), warding objectives 30-60s before they spawn, and staying alive (a dead support gives the enemy free vision control).',
   JUNGLE: 'The player is the JUNGLER — the one player who decides WHERE the next fight happens, so ' +
     'always name a destination: a specific lane to gank, a camp side to path to, or an objective to set up. ' +
     'Talk about: pathing toward winnable lanes, securing/trading objectives, ganking lanes that have CC and ' +
@@ -555,7 +559,7 @@ function buildContextLines(me, gameTimeSec, role, ctx, overused = []) {
   return lines;
 }
 
-const COACH_SYSTEM = (phase, lang, role) => {
+const COACH_SYSTEM = (phase, lang, role, champBrief = '') => {
   return 'You are a sharp League of Legends coach watching a LIVE game with the full scoreboard ' +
     'in front of you. Tell the player what to do in the next 60-90 seconds.\n' +
 
@@ -613,13 +617,24 @@ const COACH_SYSTEM = (phase, lang, role) => {
 
     'Max 45 words. No preamble, no bullet labels, speak directly ("you"). ' +
     PHASE_BRIEF[phase] + ' ' + (ROLE_BRIEF[role] || '') +
+    // Position says where they stand; this says what they are FOR. It comes
+    // last so it wins where it contradicts the role default.
+    (champBrief ? '\n' + champBrief : '') +
     FORMAT_RULE + shortLanguageRule(lang);
 };
 
 export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang, recentTips = [], overused = [] }) {
   const phase = ctx?.phase || 'mid';
-  const system = COACH_SYSTEM(phase, lang, role);
+  const system = COACH_SYSTEM(phase, lang, role, ctx?.champBrief || '');
   const lines = buildContextLines(me, gameTimeSec, role, ctx, overused);
+  // The glossary already forbids transliterating champion names, and it still
+  // leaks one every few dozen tips ("Зері", "Ургот"). Naming the exact ten in
+  // play is a far harder rule to slip past than a general one.
+  const roster = [...(ctx?.allies || []), ...(ctx?.enemies || [])].map(p => p.champion).filter(Boolean);
+  if (roster.length) {
+    lines.push(`\nThe ONLY spellings allowed for the champions in this game, copy them character for ` +
+      `character and never in any other alphabet: ${roster.join(', ')}.`);
+  }
   // Each tip was generated with no idea what the previous ones said, so the
   // coach circled one theme for a whole match — a 55-minute game got "clear
   // vision near Baron" four separate times, reworded.
@@ -708,7 +723,7 @@ async function groqVision({ system, user, imageBase64, minimapBase64 }) {
 
 export async function visionTip({ imageBase64, minimapBase64, me, gameTimeSec, role, ctx, lang }) {
   const phase = ctx?.phase || 'mid';
-  const system = COACH_SYSTEM(phase, lang, role) +
+  const system = COACH_SYSTEM(phase, lang, role, ctx?.champBrief || '') +
     ' You are ALSO given a live screenshot of their screen' +
     (minimapBase64 ? ' AND a zoomed-in crop of the minimap' : '') +
     '. READ THE MINIMAP FIRST: where are both teams, which enemies are MISSING from it, is the ' +
