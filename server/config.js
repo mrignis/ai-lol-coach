@@ -49,6 +49,11 @@ export const config = {
     groqModel: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
     // Groq currently hosts no multimodal model; empty = skip Groq for vision.
     groqVisionModel: process.env.GROQ_VISION_MODEL || '',
+    // OpenAI: paid-only, but unlike the free tiers it has no daily token
+    // ceiling — the free Groq tier's 200k/day runs out after roughly one game.
+    // gpt-4o-mini class is the cheap end and is plenty for 40-word tips.
+    openaiKey: process.env.OPENAI_API_KEY || '',
+    openaiModel: process.env.OPENAI_MODEL || 'gpt-4o-mini',
     // GEMINI_API_KEY is usually already a system env var, so .env can stay empty.
     geminiKey: process.env.GEMINI_API_KEY || '',
     // flash-latest resolves to gemini-3.5-flash (free tier: only 20 req/day) —

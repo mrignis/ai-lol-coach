@@ -98,7 +98,8 @@ function deadSignature() {
   // Event count included: a kill, an objective or a purchase should refresh the
   // advice too, not only someone being dead. Without it the tip lagged behind
   // fights and felt stale in the late game.
-  const events = lastLive?.ctx?.timeline?.seq || 0;
+  // sigSeq, not seq: an item purchase should not spend an AI call.
+  const events = lastLive?.ctx?.timeline?.sigSeq || 0;
   return dead.map(e => e.champion).sort().join(',') + '|e' + events;
 }
 

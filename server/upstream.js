@@ -21,6 +21,17 @@ export function riotTarget(region, path) {
   return { url: `https://${region}.api.riotgames.com/${path}`, headers: { 'X-Riot-Token': config.riotKey } };
 }
 
+// Unlike the others, OpenAI is opt-in. In proxy mode we cannot see which
+// secrets the worker holds, and assuming it has this one would add a failing
+// round-trip to every fallback. Set OPENAI_ENABLED=1 (or a local key) to arm it.
+export const canOpenAI = !!config.llm.openaiKey
+  || (hasProxy && process.env.OPENAI_ENABLED === '1');
+
+export function openaiTarget() {
+  if (proxy) return { url: `${proxy.url}/openai`, headers: { Authorization: `Bearer ${proxy.token}` } };
+  return { url: 'https://api.openai.com/v1/chat/completions', headers: { Authorization: `Bearer ${config.llm.openaiKey}` } };
+}
+
 export function groqTarget() {
   if (proxy) return { url: `${proxy.url}/groq`, headers: { Authorization: `Bearer ${proxy.token}` } };
   return { url: 'https://api.groq.com/openai/v1/chat/completions', headers: { Authorization: `Bearer ${config.llm.groqKey}` } };

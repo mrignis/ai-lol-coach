@@ -1,6 +1,6 @@
 import { config } from './config.js';
 import { METRICS, BENCHMARKS } from './benchmarks.js';
-import { groqTarget, geminiTarget, canGroq, canGemini } from './upstream.js';
+import { groqTarget, geminiTarget, openaiTarget, canGroq, canGemini, canOpenAI } from './upstream.js';
 
 const fmt = (key, v) => (METRICS[key] ? METRICS[key].fmt(v) : String(v));
 
@@ -232,6 +232,26 @@ async function callGroq({ system, user, effort, maxTokens }) {
   return choice?.message?.content?.trim();
 }
 
+// OpenAI: no daily token ceiling, so it keeps working after the free tiers
+// hit theirs. Same OpenAI-compatible shape as Groq, minus the reasoning knob.
+async function callOpenAI({ system, user, maxTokens }) {
+  const { url, headers } = openaiTarget();
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({
+      model: config.llm.openaiModel,
+      messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+      temperature: 0.6,
+      max_tokens: maxTokens || 900,
+    }),
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!res.ok) throw new Error(`openai_${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim();
+}
+
 // Gemini with Google Search grounding — used for meta/guide lookups so the
 // bot can cite CURRENT-patch builds instead of stale training data.
 async function callGeminiGrounded({ system, user }) {
@@ -296,13 +316,14 @@ async function callGemini({ system, user }) {
 // the coaching to templates — the next provider picks it up.
 // (Ollama and Anthropic were removed 2026-07-19: the Ollama cloud model was
 // retired and its 60s timeout only delayed the template fallback.)
-const PROVIDER_CALLS = { groq: callGroq, gemini: callGemini };
+const PROVIDER_CALLS = { openai: callOpenAI, groq: callGroq, gemini: callGemini };
 
 function providerChain() {
-  const order = [config.llm.provider, 'groq', 'gemini'];
+  const order = [config.llm.provider, 'openai', 'groq', 'gemini'];
   const chain = [];
   for (const p of order) {
     if (chain.includes(p) || !PROVIDER_CALLS[p]) continue;
+    if (p === 'openai' && !canOpenAI) continue;
     if (p === 'groq' && !canGroq) continue;
     if (p === 'gemini' && !canGemini) continue;
     chain.push(p);
@@ -480,16 +501,32 @@ const COACH_SYSTEM = (phase, lang, role) => {
     '- One concrete action, plus the reason in the same breath. Then stop.\n' +
     '- If you name a threat, say the counter-play (where to stand, what to buy, what to wait for).\n' +
 
-    'NEVER: bare warnings ("be careful", "don\'t go alone"), filler ("farm safely", "play well"), ' +
-    'combo/mechanics spam, recommending an item the player already owns, or telling a dead enemy\'s ' +
-    'threat as if they were alive.\n' +
+    // The recurring complaint about this coach is that it states the obvious.
+    // A ranked player already knows "farm and don't feed"; what they cannot see
+    // mid-fight is the specific lever available to THEM right now.
+    'DEPTH — this is what separates a coach from a loading-screen tip:\n' +
+    '- Say something the player does NOT already know. If your sentence would be true in any game, ' +
+    'on any champion, at any rank, it is worthless — delete it and find the specific lever.\n' +
+    '- Use the tools THIS player has: their champion\'s kit, their exact items and gold, the enemy\'s ' +
+    'build, a level or timer advantage. "You just hit level 6" or "they have no Grievous Wounds yet" ' +
+    'beats any amount of general macro.\n' +
+    '- Give the causal chain in one breath: do X, because Y, which gets you Z. The Z is the part ' +
+    'that makes it coaching rather than an instruction.\n' +
+    '- Prefer a window that is open for the next minute over a habit that takes ten games to build.\n' +
 
-    'GOOD: "Zed is dead 34s — take dragon now with your jungler, you have the numbers."\n' +
-    'GOOD: "You have 3200g and no MR vs their 4 AP — buy Force of Nature this back, then group mid."\n' +
+    'NEVER: bare warnings ("be careful", "don\'t go alone"), beginner platitudes ("farm safely", ' +
+    '"don\'t feed", "play well", "ward more", "group with your team" on its own), combo/mechanics ' +
+    'spam, recommending an item the player already owns, or treating a dead enemy as a live threat.\n' +
+
+    'GOOD: "Zed is dead 34s and your jungler is bot — take dragon now, it is free and it puts you on ' +
+    'soul point before their next reset."\n' +
+    'GOOD: "You have 3200g and no MR vs their 4 AP — buy Force of Nature this back; it turns their ' +
+    'Kai\'Sa burst into a survivable trade so you can hold mid."\n' +
     'BAD: "Caitlyn has 15 kills, be careful around her." (warning with no plan)\n' +
-    'BAD: "Focus on farming and playing safe." (generic filler)\n' +
+    'BAD: "Focus on farming and playing safe." (true in every game — worthless)\n' +
+    'BAD: "Ward the river and help your team." (no lever, no consequence)\n' +
 
-    'Max 40 words. No preamble, no bullet labels, speak directly ("you"). ' +
+    'Max 45 words. No preamble, no bullet labels, speak directly ("you"). ' +
     PHASE_BRIEF[phase] + ' ' + (ROLE_BRIEF[role] || '') +
     FORMAT_RULE + shortLanguageRule(lang);
 };

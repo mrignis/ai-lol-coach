@@ -19,7 +19,11 @@ function reset(key) {
   // The events array is capped, so its length stops changing after MAX_EVENTS
   // and anything using it to detect "something happened" goes deaf — which is
   // what silenced the event-driven tips ~15 minutes into a game.
-  current = { key, events: [], lastSeen: {}, lastEventTime: 0, seq: 0 };
+  // `sigSeq` counts only events that can change what the player should DO.
+  // Buying an item was 28% of all events in a recorded game and refreshed the
+  // tip every time, spending a third of a scarce daily token budget on advice
+  // that had no reason to change.
+  current = { key, events: [], lastSeen: {}, lastEventTime: 0, seq: 0, sigSeq: 0 };
 }
 
 // Riot's event list is authoritative for kills/objectives, so we consume it
@@ -94,6 +98,9 @@ export function track({ gameTime, riotEvents, meName, teamOf, playerState }) {
 
   current.events.push(...fresh);
   current.seq += fresh.length;
+  // A purchase or an ultimate unlock is worth logging for the narrative, but
+  // it is not a reason to spend an AI call.
+  current.sigSeq += fresh.filter(e => !/you bought|unlocked your ultimate/.test(e.text)).length;
   if (current.events.length > MAX_EVENTS) current.events = current.events.slice(-MAX_EVENTS);
 
   const recent = current.events
@@ -102,7 +109,8 @@ export function track({ gameTime, riotEvents, meName, teamOf, playerState }) {
 
   return {
     recent,
-    seq: current.seq, // monotonic: safe to diff for "did anything happen?"
+    seq: current.seq,        // every event, monotonic
+    sigSeq: current.sigSeq,  // only events worth a fresh tip — diff THIS one
     all: current.events.map(e => `${mmss(e.t)} ${e.text}`),
     // A compact read of momentum: who has been winning the last two minutes.
     summary: momentum(gameTime),
