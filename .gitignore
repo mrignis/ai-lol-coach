@@ -7,3 +7,6 @@ dist/
 .DS_Store
 build-config/
 watch-*.jsonl
+
+# local session journal — never committed
+ai-team/JOURNAL.md
