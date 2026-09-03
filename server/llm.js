@@ -479,20 +479,25 @@ export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang }) {
   const lines = buildContextLines(me, gameTimeSec, role, ctx);
   lines.push('What is the single most useful thing to do right now?');
   const user = lines.join('\n');
+  let why = 'no_provider';
   try {
     // medium, like the post-game coach: at low effort the model drops into
     // infinitives and slips Russian words into Ukrainian tips.
     const r = await callLLM(system, user, { effort: 'medium' });
     if (r?.text) return { tip: r.text.trim(), source: r.provider };
+    why = 'empty_response';
   } catch (e) {
+    // Carried out to the caller: a play-test showed ~20% of live tips falling
+    // back to templates with no way to tell a rate limit from a timeout.
+    why = String(e.message).slice(0, 120);
     console.warn('[llm] liveTip failed:', e.message);
   }
   // No LLM reachable: hand back a nudge CODE so the client can render it in the
   // player's language (an English string here would ignore the language switch).
   const fb = nudges && nudges.length ? nudges[0] : null;
   return fb
-    ? { tip: null, code: fb.code, params: fb.params, source: 'template' }
-    : { tip: null, code: 'safeDefault', source: 'template' };
+    ? { tip: null, code: fb.code, params: fb.params, source: 'template', why }
+    : { tip: null, code: 'safeDefault', source: 'template', why };
 }
 
 // Vision coaching: the model literally looks at a screenshot of the player's

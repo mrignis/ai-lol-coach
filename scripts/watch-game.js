@@ -91,7 +91,7 @@ async function tick() {
       const text = tip.data?.tip || tip.data?.code || null;
       if (text && text !== lastTip) {
         lastTip = text;
-        log({ ev: 'tip', clock: mmss(d.gameTimeSec), trigger: changed ? 'event' : 'timer', source: tip.data?.source, ms: tip.ms, text });
+        log({ ev: 'tip', clock: mmss(d.gameTimeSec), trigger: changed ? 'event' : 'timer', source: tip.data?.source, why: tip.data?.why, ms: tip.ms, text });
         console.log(`  💬 [${mmss(d.gameTimeSec)} ${tip.data?.source} ${tip.ms}ms] ${String(text).slice(0, 120)}`);
       }
     } catch (e) {

@@ -339,7 +339,7 @@ export async function liveCoachResponse(bucket = 'mid', lang = 'en') {
   const data = await fetchLiveData();
   const base = await buildLiveResponse(data, bucket);
   if (!base.ready) return { inGame: base.inGame !== false, ready: false };
-  const { tip, code, params, source } = await liveTip({
+  const { tip, code, params, source, why } = await liveTip({
     me: base.me,
     gameTimeSec: base.gameTimeSec,
     role: base.me.role,
@@ -348,5 +348,5 @@ export async function liveCoachResponse(bucket = 'mid', lang = 'en') {
     lang,
   });
   // tip = LLM prose (already in `lang`); code/params = template the client localizes.
-  return { inGame: true, ready: true, tip, code, params, source };
+  return { inGame: true, ready: true, tip, code, params, source, why };
 }

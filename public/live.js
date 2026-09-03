@@ -102,10 +102,11 @@ function deadSignature() {
   return dead.map(e => e.champion).sort().join(',') + '|e' + events;
 }
 
-// A teamfight can produce several events per poll; without a floor between
-// requests a chaotic minute would spend a dozen AI calls out of a daily budget.
+// Groq caps TOKENS per minute (8000), not just requests, and one live tip with
+// the full glossary costs ~2.5k. A play-test hit that ceiling and dropped ~20%
+// of tips to templates, four in a row during fights. 20s ≈ 3 calls/min, under it.
 let lastTipAt = 0;
-const MIN_TIP_GAP = 15000;
+const MIN_TIP_GAP = 20000;
 
 async function loadAiTip(force = false) {
   if (!ovOpts.ai) return;
