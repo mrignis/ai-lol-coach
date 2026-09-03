@@ -124,6 +124,7 @@ function recordTip(entry) {
   if (tipLog.length > 200) tipLog.shift();
 }
 let lastCoachLang = 'en'; // vision calls happen out-of-band, so remember the UI language
+let lastGameTime = 0;     // detects a new game so tip history does not leak across matches
 
 // Read-only view of tips already served — for diagnostics, costs nothing.
 app.get('/api/tips-log', (req, res) => {
@@ -159,8 +160,18 @@ app.get('/api/live-coach', async (req, res) => {
     }
     // Hand the model what it just said: without it the coach circled the same
     // theme all game ("clear vision near Baron" four times in one match).
-    const recentTips = tipLog.filter(t => t.tip).slice(-3).map(t => t.tip);
-    const out = await liveCoachResponse(bucket, wantLang, recentTips);
+    const withTips = tipLog.filter(t => t.tip);
+    const recentTips = withTips.slice(-3).map(t => t.tip);
+    // A much wider window feeds the purchase-order guard — item nagging spans
+    // twenty minutes, well past anything the model can see in three tips.
+    const tipHistory = withTips.slice(-20).map(t => t.tip);
+    const out = await liveCoachResponse(bucket, wantLang, recentTips, tipHistory);
+    // A clock that went backwards means a new game: the previous match's advice
+    // must not suppress items in this one.
+    if (out.gameTimeSec != null) {
+      if (out.gameTimeSec + 60 < lastGameTime) tipLog.length = 0;
+      lastGameTime = out.gameTimeSec;
+    }
     if (out.ready && out.tip) textTipState = { data: out, ts: Date.now(), lang: wantLang, sit };
     if (out.ready) recordTip({ source: out.source, why: out.why, tip: out.tip, code: out.code, sit, hot });
     res.json(out);

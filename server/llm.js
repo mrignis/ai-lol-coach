@@ -98,6 +98,13 @@ const LANG_TERMS = {
     'Fighting someone is "проти <Champion>" or "з <Champion>" — never "у <Champion>". ' +
       'Contesting an objective is "не борись за баф" / "не контестуй барона" — "оскаржувати" is a ' +
       'legal term and is wrong here.',
+    // One game called the Rift Herald "Герольд" twice and "Вісник" once.
+    'Neutral objectives have ONE name each, always the same one: Rift Herald = Вісник ' +
+      '(never "Герольд"), Baron Nashor = Барон, Void Grubs = личинки, Elder Dragon = Старійшина, ' +
+      'Rift Scuttler = краб. Jungle camps: Gromp, Krugs, Raptors, Wolves — keep these in English.',
+    // "мідa" and "виході до мідa" — a Latin "a" ending a Cyrillic word.
+    'Never put a Latin letter inside a Cyrillic word. Words like "міда", "барона", "дракона" end ' +
+      'in the Cyrillic letter "а" — check every word ending before you output it.',
   ].map(s => '  ' + s).join('\n'),
 };
 
@@ -413,7 +420,7 @@ const PHASE_BRIEF = {
 };
 
 // The whole board as prompt lines — shared by the text tip and the vision tip.
-function buildContextLines(me, gameTimeSec, role, ctx) {
+function buildContextLines(me, gameTimeSec, role, ctx, overused = []) {
   const min = Math.max(gameTimeSec / 60, 0.5);
   const phase = ctx?.phase || 'mid';
   // CS with its target: given a bare number the model had no way to know
@@ -494,7 +501,10 @@ function buildContextLines(me, gameTimeSec, role, ctx) {
 
     // Concrete state — without these the model can only give generic macro,
     // and it tends to invent items the player already owns.
-    if (ctx.myHpPct != null) {
+    // Suppressed while dead: the model was given both "YOU ARE DEAD" and
+    // "health 1%" and kept choosing the weaker phrasing, telling a corpse it
+    // was too low to defend the team.
+    if (ctx.myHpPct != null && !ctx.isDead) {
       lines.push(`Your health: ${ctx.myHpPct}%` +
         (ctx.myResourcePct != null ? `, resource ${ctx.myResourcePct}%` : '') +
         (ctx.ultLevel ? ', ultimate is learned' : ', no ultimate yet') + '.');
@@ -509,7 +519,11 @@ function buildContextLines(me, gameTimeSec, role, ctx) {
     }
     // Worked out from the real inventories on both sides (see counterbuild.js),
     // so it is a fact, not something to re-derive from the item list above.
-    if (ctx.counter) {
+    // Dropped once the player has heard this purchase twice and bought
+    // something else: keeping it in front of the model is what produced ten
+    // separate asks for the same 450-gold component in one recorded game.
+    const counterStale = ctx.counter && overused.some(i => ctx.counter.buy.toLowerCase().includes(i.toLowerCase()));
+    if (ctx.counter && !counterStale) {
       lines.push(`COUNTER-BUILD READ: ${ctx.counter.text}` +
         (ctx.myCurrentGold != null ? ` You are carrying ${ctx.myCurrentGold} gold.` : ''));
     }
@@ -595,13 +609,21 @@ const COACH_SYSTEM = (phase, lang, role) => {
     FORMAT_RULE + shortLanguageRule(lang);
 };
 
-export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang, recentTips = [] }) {
+export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang, recentTips = [], overused = [] }) {
   const phase = ctx?.phase || 'mid';
   const system = COACH_SYSTEM(phase, lang, role);
-  const lines = buildContextLines(me, gameTimeSec, role, ctx);
+  const lines = buildContextLines(me, gameTimeSec, role, ctx, overused);
   // Each tip was generated with no idea what the previous ones said, so the
   // coach circled one theme for a whole match — a 55-minute game got "clear
   // vision near Baron" four separate times, reworded.
+  // Purchase orders specifically, over a much longer window than recentTips —
+  // one game asked for the same 450-gold component ten times in nineteen
+  // minutes, every ask far enough apart that the three-tip memory never saw it.
+  if (overused.length) {
+    lines.push('\nALREADY TOLD THEM TO BUY, more than once, and they did not: ' + overused.join(', ') +
+      '. They have had the chance and chose otherwise — do NOT ask again for any of these. ' +
+      'Spend the tip on something they can still act on.');
+  }
   if (recentTips.length) {
     lines.push('\nYOU ALREADY TOLD THIS PLAYER, most recent last:\n  - ' + recentTips.join('\n  - ') +
       '\nDo NOT repeat those points or restate them in different words. If the situation genuinely ' +

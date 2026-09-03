@@ -31,6 +31,30 @@ export async function getChampions() {
   return data;
 }
 
+// Every purchasable item name, lowercased. Used to tell a repeated purchase
+// order apart from an ability with an item-shaped name: suppressing "Null-Magic
+// Mantle" after the third ask is right, suppressing "Wall of Pain" would gag
+// the coach about the player's own W.
+let itemMemo = null;   // { data: string[], set: Set, _ts }
+export async function getItemNames() {
+  if (itemMemo && Date.now() - itemMemo._ts < TTL) return itemMemo.set;
+  const cached = await cache.get('ddragon_items');
+  if (cached && Date.now() - (cached._ts || 0) < TTL) {
+    itemMemo = { ...cached, set: new Set(cached.data) };
+    return itemMemo.set;
+  }
+  const patch = await currentPatch();
+  const raw = await (await fetch(`https://ddragon.leagueoflegends.com/cdn/${patch}/data/en_US/item.json`)).json();
+  const names = [];
+  for (const id in raw.data) {
+    const n = raw.data[id]?.name;
+    if (n) names.push(n.toLowerCase());
+  }
+  await cache.set('ddragon_items', { data: names, _ts: Date.now() });
+  itemMemo = { data: names, set: new Set(names), _ts: Date.now() };
+  return itemMemo.set;
+}
+
 // Is this champion primarily magic damage?
 export function isAP(name, champs) {
   const c = champs?.[name];

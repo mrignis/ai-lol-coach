@@ -1,9 +1,10 @@
 import https from 'node:https';
 import { BENCHMARKS } from './benchmarks.js';
 import { liveTip } from './llm.js';
-import { getChampions, isAP } from './ddragon.js';
+import { getChampions, isAP, getItemNames } from './ddragon.js';
 import { track } from './timeline.js';
 import { counterBuild } from './counterbuild.js';
+import { overusedItems } from './repeats.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // League "Live Client Data API" — runs LOCALLY on the player's PC while a
@@ -369,10 +370,18 @@ export async function buildLiveResponse(data, bucket = 'mid') {
 }
 
 // LLM-backed single live recommendation (polled less often than the widget).
-export async function liveCoachResponse(bucket = 'mid', lang = 'en', recentTips = []) {
+export async function liveCoachResponse(bucket = 'mid', lang = 'en', recentTips = [], tipHistory = []) {
   const data = await fetchLiveData();
   const base = await buildLiveResponse(data, bucket);
   if (!base.ready) return { inGame: base.inGame !== false, ready: false };
+  // Purchase orders the player has already heard and not acted on. Needs a far
+  // wider window than `recentTips`: one recorded game asked for the same
+  // 450-gold component ten times across nineteen minutes, and a three-tip
+  // memory cannot see a theme that long.
+  let overused = [];
+  try {
+    overused = overusedItems(tipHistory, await getItemNames());
+  } catch { /* Data Dragon offline — repetition guard is a nicety, not a blocker */ }
   const { tip, code, params, source, why } = await liveTip({
     me: base.me,
     gameTimeSec: base.gameTimeSec,
@@ -381,7 +390,10 @@ export async function liveCoachResponse(bucket = 'mid', lang = 'en', recentTips 
     ctx: base.ctx,
     lang,
     recentTips,
+    overused,
   });
   // tip = LLM prose (already in `lang`); code/params = template the client localizes.
-  return { inGame: true, ready: true, tip, code, params, source, why };
+  // gameTimeSec goes out too: the caller keeps a tip history for the repetition
+  // guard, and a clock that jumped backwards is how it learns a new game began.
+  return { inGame: true, ready: true, tip, code, params, source, why, gameTimeSec: base.gameTimeSec };
 }
