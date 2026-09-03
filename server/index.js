@@ -31,7 +31,11 @@ app.get('/api/health', (req, res) => {
     proxy: Boolean(config.proxy),
     riotKey: canRiot,
     aiKey: canGroq || canGemini,
-    llm: config.proxy ? 'proxy' : config.llm.provider,
+    // Report the provider that will actually answer. A local key bypasses the
+    // worker, so saying "proxy" here was misleading while OpenAI served every
+    // request directly.
+    llm: config.llm.openaiKey ? config.llm.provider
+      : (config.proxy ? 'proxy' : config.llm.provider),
     // Where to paste keys — an installed build ships none, and without this
     // the UI can only say "missing" without saying where to fix it.
     envPath: userEnvPath,
