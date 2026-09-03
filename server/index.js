@@ -107,7 +107,23 @@ app.get('/api/live', async (req, res) => {
 let visionState = { tip: null, ts: 0, lang: 'en', sit: '' };
 let textTipState = { data: null, ts: 0, lang: 'en', sit: '' };
 let lastSit = ''; // situation at the time the last screenshot was analysed
+
+// Ring buffer of tips actually served, so a play-test recorder can see what the
+// widget got WITHOUT asking for tips of its own. The first recorder made its
+// own calls and so doubled the load against Groq's 8000-tokens-per-minute cap,
+// which is what made every tip in that session fall back to a template.
+const tipLog = [];
+function recordTip(entry) {
+  tipLog.push({ at: Date.now(), ...entry });
+  if (tipLog.length > 200) tipLog.shift();
+}
 let lastCoachLang = 'en'; // vision calls happen out-of-band, so remember the UI language
+
+// Read-only view of tips already served — for diagnostics, costs nothing.
+app.get('/api/tips-log', (req, res) => {
+  const since = Number(req.query.since) || 0;
+  res.json({ tips: tipLog.filter(t => t.at > since) });
+});
 
 app.get('/api/live-coach', async (req, res) => {
   const bucket = ['low', 'mid', 'high'].includes(req.query.bucket) ? req.query.bucket : 'mid';
@@ -137,6 +153,7 @@ app.get('/api/live-coach', async (req, res) => {
     }
     const out = await liveCoachResponse(bucket, wantLang);
     if (out.ready && out.tip) textTipState = { data: out, ts: Date.now(), lang: wantLang, sit };
+    if (out.ready) recordTip({ source: out.source, why: out.why, tip: out.tip, code: out.code, sit, hot });
     res.json(out);
   } catch (e) {
     if (e.code === 'NOGAME') return res.json({ inGame: false });

@@ -23,11 +23,9 @@ const OUT = path.join(
 const log = obj => fs.appendFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), ...obj }) + '\n');
 const mmss = s => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 
-let lastSit = null;
-let lastTip = null;
 let lastEventCount = 0;
+let lastTipAt = 0;
 let inGame = false;
-let tipTimer = 0;
 
 async function get(url) {
   const t0 = Date.now();
@@ -80,23 +78,23 @@ async function tick() {
   for (const e of events.slice(lastEventCount)) console.log(`  ${e}`);
   lastEventCount = events.length;
 
-  // Ask for the tip the way the widget does (same key ⇒ same cache entry).
-  const changed = sit !== lastSit;
-  if (changed || Date.now() - tipTimer > 30000) {
-    lastSit = sit;
-    tipTimer = Date.now();
-    try {
-      const hot = (ctx.deadEnemies || []).length ? 1 : 0;
-      const tip = await get(`${BASE}/api/live-coach?bucket=low&lang=${LANG}&sit=${encodeURIComponent(sit)}&hot=${hot}`);
-      const text = tip.data?.tip || tip.data?.code || null;
-      if (text && text !== lastTip) {
-        lastTip = text;
-        log({ ev: 'tip', clock: mmss(d.gameTimeSec), trigger: changed ? 'event' : 'timer', source: tip.data?.source, why: tip.data?.why, ms: tip.ms, text });
-        console.log(`  💬 [${mmss(d.gameTimeSec)} ${tip.data?.source} ${tip.ms}ms] ${String(text).slice(0, 120)}`);
+  // Read the tips the app ALREADY served. Asking for tips here would add a
+  // second stream of AI calls on top of the widget's and blow Groq's
+  // 8000-tokens-per-minute cap — which is what made a whole session fall back
+  // to templates last time.
+  try {
+    const l = await get(`${BASE}/api/tips-log?since=${lastTipAt}`);
+    for (const t of (l.data?.tips || [])) {
+      lastTipAt = Math.max(lastTipAt, t.at);
+      const text = t.tip || t.code;
+      log({ ev: 'tip', clock: mmss(d.gameTimeSec), source: t.source, why: t.why, hot: t.hot, text });
+      console.log(`  💬 [${mmss(d.gameTimeSec)} ${t.source}] ${String(text).slice(0, 110)}`);
+      if (t.source === 'template' && t.why) {
+        console.log(`     ↳ fell back: ${String(t.why).slice(0, 160)}`);
       }
-    } catch (e) {
-      log({ ev: 'tip_failed', err: String(e.message) });
     }
+  } catch (e) {
+    log({ ev: 'tiplog_failed', err: String(e.message) });
   }
 }
 

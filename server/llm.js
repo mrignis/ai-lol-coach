@@ -98,6 +98,19 @@ const LANG_TERMS = {
 // sentences came back stuffed with "vision score", "carries", "GPM", invented
 // hybrids like "utility-здібності", and formal register the rest of the UI
 // never uses. Spelling the rule out per-language is what actually stops it.
+// Live tips are ~40 words but were carrying the full 1.1k-token rule on every
+// call, and Groq's free tier caps TOKENS per minute (8000) rather than calls.
+// Trimming the rule for the live path roughly halves the cost of a tip, which
+// is the difference between ~3 and ~6 tips a minute before the cap bites.
+export function shortLanguageRule(lang) {
+  const langName = LANG_NAMES[lang];
+  if (!lang || lang === 'en' || !langName) return '';
+  return `\n\nLANGUAGE — write in natural ${langName}, informal singular, imperative ` +
+    '("Постав вард", never "Ставити вард"). Only champion, item and spell names stay in English. ' +
+    'No English words or abbreviations otherwise, no transliterated English, no invented words.' +
+    (LANG_TERMS[lang] ? `\nTerms:\n${LANG_TERMS[lang]}` : '');
+}
+
 export function languageRule(lang) {
   const langName = LANG_NAMES[lang];
   if (!lang || lang === 'en' || !langName) return '';
@@ -180,7 +193,7 @@ function templateCoach(weaknesses) {
   }).join('\n\n');
 }
 
-async function callGroq({ system, user, effort }) {
+async function callGroq({ system, user, effort, maxTokens }) {
   const { url, headers } = groqTarget();
   const res = await fetch(url, {
     method: 'POST',
@@ -194,7 +207,11 @@ async function callGroq({ system, user, effort }) {
       // max_tokens covers reasoning + visible answer on gpt-oss, and at
       // 'medium' the reasoning alone can run past 900 — that returned an EMPTY
       // message and made the whole provider fall through silently.
-      max_tokens: effort === 'medium' ? 2500 : 900,
+      // Groq counts max_tokens as a RESERVATION against its 8000-tokens-per-
+      // minute cap, not actual usage — a 2500 reservation on a 40-word live tip
+      // meant two tips in a minute could 429. Callers that need little output
+      // pass their own budget.
+      max_tokens: maxTokens || (effort === 'medium' ? 2500 : 900),
       // gpt-oss are reasoning models — 'low' keeps latency fit for live tips,
       // but at that effort the non-English prose degrades into clipped and
       // invented words, so the post-game analysis asks for 'medium' instead
@@ -297,17 +314,21 @@ function providerChain() {
 async function callLLM(system, user, opts = {}) {
   if (config.llm.provider === 'none') return null;
   const prompt = { system, user, ...opts };
-  let lastErr = null;
+  // Every provider's failure is kept, not just the last one. A play-test where
+  // all tips fell back reported only "gemini_429" — the reason Groq (the
+  // primary) had failed was thrown away, which made it undiagnosable.
+  const failures = [];
   for (const p of providerChain()) {
     try {
       const text = await PROVIDER_CALLS[p](prompt);
       if (text) return { text: plainText(text), provider: p };
+      failures.push(`${p}: empty`);
     } catch (e) {
-      lastErr = e;
+      failures.push(`${p}: ${String(e.message).slice(0, 60)}`);
       console.warn(`[llm] ${p} failed (${String(e.message).slice(0, 90)}) — trying next provider`);
     }
   }
-  if (lastErr) throw lastErr;
+  if (failures.length) throw new Error(failures.join(' | '));
   return null;
 }
 
@@ -470,7 +491,7 @@ const COACH_SYSTEM = (phase, lang, role) => {
 
     'Max 40 words. No preamble, no bullet labels, speak directly ("you"). ' +
     PHASE_BRIEF[phase] + ' ' + (ROLE_BRIEF[role] || '') +
-    FORMAT_RULE + languageRule(lang);
+    FORMAT_RULE + shortLanguageRule(lang);
 };
 
 export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang }) {
@@ -483,7 +504,7 @@ export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang }) {
   try {
     // medium, like the post-game coach: at low effort the model drops into
     // infinitives and slips Russian words into Ukrainian tips.
-    const r = await callLLM(system, user, { effort: 'medium' });
+    const r = await callLLM(system, user, { effort: 'medium', maxTokens: 1100 });
     if (r?.text) return { tip: r.text.trim(), source: r.provider };
     why = 'empty_response';
   } catch (e) {
