@@ -103,11 +103,12 @@ function deadSignature() {
   return dead.map(e => e.champion).sort().join(',') + '|e' + events;
 }
 
-// Groq caps TOKENS per minute (8000), not just requests, and one live tip with
-// the full glossary costs ~2.5k. A play-test hit that ceiling and dropped ~20%
-// of tips to templates, four in a row during fights. 20s ≈ 3 calls/min, under it.
+// Paced for readability and cost, not for a provider cap: OpenAI allows
+// 500 calls a minute and we use three. A play-test left the same tip on
+// screen for 35-60s, which read as the widget having frozen, so the floor
+// came down to 12s and the quiet-stretch timer to 18s.
 let lastTipAt = 0;
-const MIN_TIP_GAP = 20000;
+const MIN_TIP_GAP = 12000;
 
 async function loadAiTip(force = false) {
   if (!ovOpts.ai) return;
@@ -208,4 +209,4 @@ document.addEventListener('langchange', () => {
 poll();
 setInterval(poll, 5000);
 loadAiTip(true);
-setInterval(loadAiTip, 30000); // twice a minute — fresh vision tips get picked up fast
+setInterval(loadAiTip, 18000); // a quiet stretch still refreshes; see MIN_TIP_GAP
