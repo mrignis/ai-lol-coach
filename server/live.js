@@ -3,6 +3,7 @@ import { BENCHMARKS } from './benchmarks.js';
 import { liveTip } from './llm.js';
 import { getChampions, isAP } from './ddragon.js';
 import { track } from './timeline.js';
+import { counterBuild } from './counterbuild.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // League "Live Client Data API" — runs LOCALLY on the player's PC while a
@@ -142,6 +143,18 @@ export async function gameContext(data, me, bucket = 'mid') {
   const pct = (cur, max) => (max > 0 ? Math.round((cur / max) * 100) : null);
   const ab = data.activePlayer?.abilities || {};
 
+  // Counter-itemisation, worked out here rather than left to the model — see
+  // counterbuild.js. `myDamage` decides which shred item is correct against a
+  // health-stacking frontline; ability power is the only reliable signal the
+  // Live API gives us for it.
+  const myItemList = itemNames(me);
+  const enemyBuilds = foes.map(p => ({ champion: p.championName, items: itemNames(p) }));
+  const counter = counterBuild({
+    enemyBuilds,
+    myItems: myItemList,
+    myDamage: (stats.abilityPower || 0) >= 30 ? 'AP' : 'AD',
+  });
+
   return {
     goldDiff: Math.round(myGold - foeGold),
     teamItemGold: myGold,
@@ -159,9 +172,13 @@ export async function gameContext(data, me, bucket = 'mid') {
     deadEnemies,
     myHpPct: pct(stats.currentHealth, stats.maxHealth),
     myResourcePct: pct(stats.resourceValue, stats.resourceMax),
-    myItems: itemNames(me),
+    myItems: myItemList,
     ultLevel: ab.R?.abilityLevel || 0,
-    enemyBuilds: foes.map(p => ({ champion: p.championName, items: itemNames(p) })),
+    enemyBuilds,
+    counter,
+    // Gold on hand: an item tip is only actionable at a shop moment, so the
+    // coach is told what the player can actually afford right now.
+    myCurrentGold: Math.round(data.activePlayer?.currentGold || 0),
     myArmor: Math.round(stats.armor || 0),
     myMagicResist: Math.round(stats.magicResist || 0),
     myKP,

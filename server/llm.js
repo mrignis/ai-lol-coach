@@ -480,6 +480,12 @@ function buildContextLines(me, gameTimeSec, role, ctx) {
         .filter(e => e.items.length)
         .map(e => `${e.champion} [${e.items.join(', ')}]`).join('; ') + '.');
     }
+    // Worked out from the real inventories on both sides (see counterbuild.js),
+    // so it is a fact, not something to re-derive from the item list above.
+    if (ctx.counter) {
+      lines.push(`COUNTER-BUILD READ: ${ctx.counter.text}` +
+        (ctx.myCurrentGold != null ? ` You are carrying ${ctx.myCurrentGold} gold.` : ''));
+    }
     if (ctx.enemies?.length) {
       lines.push('Enemy team: ' + ctx.enemies.map(p => `${mark(p.champion)} ${p.k}/${p.d}/${p.a} lvl${p.lvl}`).join(', ') + '.');
     }
@@ -500,6 +506,10 @@ const COACH_SYSTEM = (phase, lang, role) => {
     '1. Dead enemies + their respawn timers — that is the window; name what to take with it.\n' +
     '2. An objective spawning or up right now (dragon/baron/soul point).\n' +
     '3. You are low HP / out of resource, or a big item is affordable.\n' +
+    '3b. A COUNTER-BUILD READ, if you were given one. Unlike a respawn timer this stays true all ' +
+    'game, so YOU choose the moment: best while they are dead, recalling, or holding enough gold — ' +
+    'and always better than repeating a macro tip. Say it once; if it is still in the read later, ' +
+    'that means they have not bought it, so raise it again only when a fight just showed why.\n' +
     '4. A specific enemy who is fed or keeps killing you.\n' +
     '5. Only if none of the above: role/phase fundamentals.\n' +
 

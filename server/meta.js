@@ -16,11 +16,16 @@ export async function matchupBrief({ champ, vs, role, lang = 'en' }) {
   const system =
     'You are a League of Legends coach preparing a player right before a ranked game. ' +
     'Use web search to find guidance for the CURRENT patch — builds and matchup advice change ' +
-    'every patch, so prefer fresh sources over memory. Output EXACTLY this structure, no preamble:\n' +
-    '1) Start + core items (one line)\n' +
-    '2) Three matchup rules — each actionable (threat → what to do), one line each\n' +
-    '3) Your power spike and what to do when it hits (one line)\n' +
-    'Max 90 words total.' +
+    'every patch, so prefer fresh sources over memory. The brief is opened once and stays on screen ' +
+    'for the WHOLE game, so it must still be useful at 30 minutes — not only in lane. Output EXACTLY ' +
+    'this structure, no preamble:\n' +
+    '1) Start + core items, and the one item to add if the enemy team is mostly AD or mostly AP (one line)\n' +
+    '2) LANE (to ~level 6): two rules against this specific opponent — threat → what to do\n' +
+    '3) MID GAME (after your first item): where you go and what you do once lane is over — grouping, ' +
+    'roaming, which objective your champion enables (one line)\n' +
+    '4) LATE GAME: your win condition and what loses the game for you — how you position in a 5v5 and ' +
+    'what you must never be caught doing (one line)\n' +
+    'Max 130 words total.' +
     // Same plain-text + no-half-translation rules as the coaching prompts: this
     // brief is rendered with textContent, so Markdown would show up literally.
     '\n\nFORMAT — plain text only. No Markdown of any kind: no asterisks (* or **), no underscores, ' +
