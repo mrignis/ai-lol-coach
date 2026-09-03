@@ -242,8 +242,12 @@ async function callOpenAI({ system, user, maxTokens }) {
     body: JSON.stringify({
       model: config.llm.openaiModel,
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-      temperature: 0.6,
-      max_tokens: maxTokens || 900,
+      // The gpt-5.x family rejects `max_tokens` outright ("Unsupported
+      // parameter") and only accepts `max_completion_tokens`; the 4o family
+      // predates that rename. Send whichever the chosen model understands.
+      ...(/^gpt-5/.test(config.llm.openaiModel)
+        ? { max_completion_tokens: maxTokens || 900 }
+        : { max_tokens: maxTokens || 900, temperature: 0.6 }),
     }),
     signal: AbortSignal.timeout(30000),
   });

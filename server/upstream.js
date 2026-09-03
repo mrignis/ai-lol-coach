@@ -27,9 +27,14 @@ export function riotTarget(region, path) {
 export const canOpenAI = !!config.llm.openaiKey
   || (hasProxy && process.env.OPENAI_ENABLED === '1');
 
+// A local key wins over the proxy: there is no reason to route through the
+// worker when we can reach OpenAI directly, and it keeps working while the
+// worker's own secret is not set up yet.
 export function openaiTarget() {
-  if (proxy) return { url: `${proxy.url}/openai`, headers: { Authorization: `Bearer ${proxy.token}` } };
-  return { url: 'https://api.openai.com/v1/chat/completions', headers: { Authorization: `Bearer ${config.llm.openaiKey}` } };
+  if (config.llm.openaiKey) {
+    return { url: 'https://api.openai.com/v1/chat/completions', headers: { Authorization: `Bearer ${config.llm.openaiKey}` } };
+  }
+  return { url: `${proxy.url}/openai`, headers: { Authorization: `Bearer ${proxy.token}` } };
 }
 
 export function groqTarget() {

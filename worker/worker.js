@@ -84,6 +84,17 @@ export default {
       }, 'groq');
     }
 
+    // 3b) OpenAI — the only provider without a daily token ceiling, so it is
+    // the primary once configured. Same request shape as Groq.
+    if (req.method === 'POST' && path === '/openai') {
+      if (!env.OPENAI_API_KEY) return json(500, { error: 'openai_key_missing' });
+      return proxyUpstream('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+        body: await req.text(),
+      }, 'openai');
+    }
+
     // 4) Gemini: /gemini/<model>:generateContent
     if (req.method === 'POST' && path.startsWith('/gemini/')) {
       if (!env.GEMINI_API_KEY) return json(500, { error: 'gemini_key_missing' });
