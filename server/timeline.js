@@ -15,7 +15,11 @@ let current = null;
 const mmss = t => `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}`;
 
 function reset(key) {
-  current = { key, events: [], lastSeen: {}, lastEventTime: 0 };
+  // `seq` counts every event ever logged this game and is never trimmed.
+  // The events array is capped, so its length stops changing after MAX_EVENTS
+  // and anything using it to detect "something happened" goes deaf — which is
+  // what silenced the event-driven tips ~15 minutes into a game.
+  current = { key, events: [], lastSeen: {}, lastEventTime: 0, seq: 0 };
 }
 
 // Riot's event list is authoritative for kills/objectives, so we consume it
@@ -89,6 +93,7 @@ export function track({ gameTime, riotEvents, meName, teamOf, playerState }) {
   ].sort((a, b) => a.t - b.t);
 
   current.events.push(...fresh);
+  current.seq += fresh.length;
   if (current.events.length > MAX_EVENTS) current.events = current.events.slice(-MAX_EVENTS);
 
   const recent = current.events
@@ -97,6 +102,7 @@ export function track({ gameTime, riotEvents, meName, teamOf, playerState }) {
 
   return {
     recent,
+    seq: current.seq, // monotonic: safe to diff for "did anything happen?"
     all: current.events.map(e => `${mmss(e.t)} ${e.text}`),
     // A compact read of momentum: who has been winning the last two minutes.
     summary: momentum(gameTime),
