@@ -282,7 +282,13 @@ async function callGroq({ system, user, effort, maxTokens }) {
 
 // OpenAI: no daily token ceiling, so it keeps working after the free tiers
 // hit theirs. Same OpenAI-compatible shape as Groq, minus the reasoning knob.
-async function callOpenAI({ system, user, maxTokens }) {
+// `openaiMaxTokens` exists because the two providers charge for a ceiling in
+// opposite ways. Groq counts max_tokens as a RESERVATION against its
+// tokens-per-minute cap, so it must stay small. OpenAI bills actual usage, so a
+// generous ceiling costs nothing — and gpt-5.x counts its reasoning against the
+// same budget, which is why a 1400 ceiling returned an empty message three
+// times in one recorded game.
+async function callOpenAI({ system, user, maxTokens, openaiMaxTokens }) {
   const { url, headers } = openaiTarget();
   const res = await fetch(url, {
     method: 'POST',
@@ -294,8 +300,8 @@ async function callOpenAI({ system, user, maxTokens }) {
       // parameter") and only accepts `max_completion_tokens`; the 4o family
       // predates that rename. Send whichever the chosen model understands.
       ...(/^gpt-5/.test(config.llm.openaiModel)
-        ? { max_completion_tokens: maxTokens || 900 }
-        : { max_tokens: maxTokens || 900, temperature: 0.6 }),
+        ? { max_completion_tokens: openaiMaxTokens || maxTokens || 900 }
+        : { max_tokens: openaiMaxTokens || maxTokens || 900, temperature: 0.6 }),
     }),
     signal: AbortSignal.timeout(30000),
   });
@@ -663,7 +669,7 @@ export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang, recent
     // reason the post-game coach still asks for 'medium' — but a slightly
     // rougher sentence beats no sentence, and the extra headroom leaves room
     // for the visible answer.
-    const r = await callLLM(system, user, { effort: 'low', maxTokens: 1400 });
+    const r = await callLLM(system, user, { effort: 'low', maxTokens: 1400, openaiMaxTokens: 4000 });
     if (r?.text) return { tip: r.text.trim(), source: r.provider };
     why = 'empty_response';
   } catch (e) {

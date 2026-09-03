@@ -185,6 +185,12 @@ app.get('/api/live-coach', async (req, res) => {
     // count reset to zero every time. "They already refused this" is a fact
     // about the game, not about the last few minutes.
     const tipHistory = withTips.map(t => t.tip);
+    // Stamped when the request STARTS, not when the model answers. Generation
+    // takes 5-20s, and charging that to the cache pushed the effective gap past
+    // the next 18s poll: a 36s cache plus 18s of latency expires at 54s, which
+    // is exactly the 50-60s tail a recorded game showed while the 36s cache was
+    // working perfectly for every fast response.
+    const startedAt = Date.now();
     const out = await liveCoachResponse(bucket, wantLang, recentTips, tipHistory);
     // A clock that went backwards means a new game: the previous match's advice
     // must not suppress items in this one.
@@ -192,7 +198,7 @@ app.get('/api/live-coach', async (req, res) => {
       if (out.gameTimeSec + 60 < lastGameTime) tipLog.length = 0;
       lastGameTime = out.gameTimeSec;
     }
-    if (out.ready && out.tip) textTipState = { data: out, ts: Date.now(), lang: wantLang, sit };
+    if (out.ready && out.tip) textTipState = { data: out, ts: startedAt, lang: wantLang, sit };
     if (out.ready) recordTip({ source: out.source, why: out.why, tip: out.tip, code: out.code, sit, hot });
     res.json(out);
   } catch (e) {
