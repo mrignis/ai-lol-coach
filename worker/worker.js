@@ -28,7 +28,9 @@ const RIOT_REGIONS = new Set([
   'na1', 'euw1', 'eun1', 'kr', 'br1', 'jp1', 'la1', 'la2', 'oc1', 'tr1', 'ru',
 ]);
 // Only the read-only endpoints the app actually uses.
-const RIOT_PATH_OK = /^(riot\/account\/v1|lol\/(summoner|league|match|platform|challenges))\//;
+// league-exp is the only way to list players below Master, and it is a
+// separate path — "league" alone does not match it because of the hyphen.
+const RIOT_PATH_OK = /^(riot\/account\/v1|lol\/(summoner|league(-exp)?|match|platform|challenges))\//;
 
 const GEMINI_MODEL_OK = /^[A-Za-z0-9.\-]+:generateContent$/;
 

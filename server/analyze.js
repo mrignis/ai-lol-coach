@@ -10,7 +10,7 @@ import { loadAnalyses, appendAnalysis, computeTrends } from './history.js';
 // and 404 wrapped in U+2066/U+2069.
 const INVISIBLE = /[­​-‏‪-‮⁠-⁯﻿]/g;
 
-export function parseRiotId(raw) {
+function parseRiotId(raw) {
   const s = String(raw || '').replace(INVISIBLE, '').trim();
   const hash = s.lastIndexOf('#');
   if (hash === -1) throw Object.assign(new Error('Riot ID must be "Name#TAG"'), { code: 400 });

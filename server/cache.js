@@ -15,10 +15,14 @@ async function ensure() {
 
 const safe = k => String(k).replace(/[^a-zA-Z0-9_.-]/g, '_');
 
-export async function get(key) {
+// `maxAgeMs` treats anything older as a miss — for the data that does change
+// (ladders, names). Age comes from the file's own mtime rather than a stored
+// timestamp, so entries written before this existed stay readable.
+export async function get(key, maxAgeMs = 0) {
   try {
     await ensure();
     const file = path.join(dir, safe(key) + '.json');
+    if (maxAgeMs > 0 && Date.now() - (await fs.stat(file)).mtimeMs > maxAgeMs) return null;
     return JSON.parse(await fs.readFile(file, 'utf8'));
   } catch {
     return null;

@@ -21,7 +21,6 @@ export const envReport = ENV_CANDIDATES.map(p => {
   return { path: p, ok: !r.error, keys: r.parsed ? Object.keys(r.parsed).length : 0 };
 });
 
-export const envPaths = ENV_CANDIDATES;
 
 // The one the user is meant to edit. Not simply the last candidate: that is
 // the packaged resources folder inside Program Files, which is read-only and

@@ -49,7 +49,7 @@ function lastEventTime(events, name) {
 }
 
 // Laning → mid → late. Advice that helps at 5:00 is noise at 30:00.
-export function gamePhase(gameTime) {
+function gamePhase(gameTime) {
   if (gameTime < 840) return 'early';   // < 14:00
   if (gameTime < 1500) return 'mid';    // < 25:00
   return 'late';
@@ -65,7 +65,7 @@ const scorerOf = name => (/T1/.test(name || '') ? 'CHAOS' : 'ORDER');
 // gives every item's real price, so no static price table can go stale.
 const itemGold = p => (p.items || []).reduce((a, it) => a + (it.price || 0) * (it.count || 1), 0);
 
-export async function gameContext(data, me, bucket = 'mid') {
+async function gameContext(data, me, bucket = 'mid') {
   const gameTime = data.gameData?.gameTime || 0;
   const players = data.allPlayers || [];
   const events = data.events?.Events || [];
@@ -213,7 +213,7 @@ export async function gameContext(data, me, bucket = 'mid') {
 // Informational prompts only — max 3, gentlest first.
 // Returns {level, code, params}: the server has no UI language, so the client
 // renders each code through i18n (tNudge) in whatever language is selected.
-export function buildNudges(me, role, gameTime, events, gold, bucket = 'mid', ctx = null) {
+function buildNudges(me, role, gameTime, events, gold, bucket = 'mid', ctx = null) {
   const min = Math.max(gameTime / 60, 0.5);
   const bench = (BENCHMARKS[role] || BENCHMARKS.MIDDLE)[bucket];
   const phase = ctx?.phase || gamePhase(gameTime);

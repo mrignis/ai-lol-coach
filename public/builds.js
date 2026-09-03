@@ -1,12 +1,10 @@
-const $ = id => document.getElementById(id);
 
-const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
 // Champion names power the autocomplete on both inputs.
 async function loadChampions() {
   try {
     const { champions } = await (await fetch('/api/champions')).json();
-    $('champList').innerHTML = (champions || []).map(c => `<option value="${esc(c)}">`).join('');
+    $('champList').innerHTML = (champions || []).map(c => `<option value="${escapeHtml(c)}">`).join('');
   } catch { /* autocomplete is a nicety, the free-text input still works */ }
 }
 

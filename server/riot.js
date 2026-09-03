@@ -13,10 +13,10 @@ class RiotError extends Error {
 
 // Single gated GET with 429 back-off and optional immutable disk cache.
 // region = routing value / platform; path = everything after the host.
-async function riotGet(region, path, { cacheKey } = {}) {
+async function riotGet(region, path, { cacheKey, maxAge = 0 } = {}) {
   if (!canRiot) throw new RiotError('No Riot access configured (set PROXY_URL or RIOT_API_KEY)', 500);
   if (cacheKey) {
-    const hit = await cache.get(cacheKey);
+    const hit = await cache.get(cacheKey, maxAge);
     if (hit) return hit;
   }
   const { url, headers } = riotTarget(region, path);
@@ -47,6 +47,38 @@ export async function getAccount(gameName, tagLine, platform) {
   const region = accountRegional(platform);
   const path = `riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`;
   return riotGet(region, path); // not cached — names can change puuid mapping rarely, keep fresh
+}
+
+// puuid → Riot ID, for the ladder (which returns puuids, not names). Cached
+// for a week: renames are rare, and the alternative is 50 extra calls every
+// time somebody opens the page.
+export async function getRiotId(puuid, platform) {
+  return riotGet(accountRegional(platform), `riot/account/v1/accounts/by-puuid/${puuid}`, {
+    cacheKey: `name_${puuid}`,
+    maxAge: 7 * 24 * 3600 * 1000,
+  });
+}
+
+// ── LEAGUE-V4: the three apex ladders ─────────────────────────────────
+// Challenger / Grandmaster / Master come from their own endpoints and are the
+// only tiers Riot exposes as a ranked list; everything below is served per
+// player. Ten minutes is well inside how fast the top of the ladder moves.
+export async function getApexLeague(platform, tier, queue) {
+  return riotGet(platform, `lol/league/v4/${tier}leagues/by-queue/${queue}`, {
+    cacheKey: `ladder_${platform}_${tier}_${queue}`,
+    maxAge: 10 * 60 * 1000,
+  });
+}
+
+// Everything below Master. LEAGUE-EXP-V4 is the only endpoint that will list
+// players by tier and division at all — but it returns an UNORDERED page, not
+// a ranking, because Riot does not rank these tiers globally. We can sort the
+// page we were given and nothing more, which the page says out loud.
+export async function getLeaguePage(platform, queue, tier, division, page = 1) {
+  return riotGet(platform, `lol/league-exp/v4/entries/${queue}/${tier}/${division}?page=${page}`, {
+    cacheKey: `ladder_${platform}_${tier}_${division}_${queue}_p${page}`,
+    maxAge: 10 * 60 * 1000,
+  });
 }
 
 // ── LEAGUE-V4: puuid → rank (solo queue preferred) ────────────────────
@@ -87,7 +119,7 @@ export async function getMatchIds(puuid, platform, count = 20) {
 }
 
 // ── MATCH-V5: matchId → full match (cached, immutable) ────────────────
-export async function getMatch(matchId, platform) {
+async function getMatch(matchId, platform) {
   const region = platformToRegional(platform);
   return riotGet(region, `lol/match/v5/matches/${matchId}`, { cacheKey: `match_${matchId}` });
 }

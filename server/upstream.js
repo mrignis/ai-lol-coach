@@ -5,7 +5,7 @@ import { config } from './config.js';
 //     with only the app token — no upstream keys exist in the app at all.
 //   direct mode (dev): call the upstream directly with a local key from .env.
 const proxy = config.proxy;
-export const hasProxy = !!proxy;
+const hasProxy = !!proxy;
 
 // True when we can reach an AI provider one way or another.
 export const canGroq = hasProxy || !!config.llm.groqKey;
@@ -14,11 +14,15 @@ export const canRiot = hasProxy || !!config.riotKey;
 
 // region = routing value or platform host prefix (e.g. "americas", "na1").
 // path   = everything after the host, query string included.
+// A local key wins over the proxy, same rule as openaiTarget below. The worker
+// only forwards paths on its allowlist, so a developer adding a new Riot
+// endpoint would otherwise be blocked until the worker is redeployed — which
+// is exactly what happened when the ladder started calling league-exp.
 export function riotTarget(region, path) {
-  if (proxy) {
-    return { url: `${proxy.url}/riot/${region}/${path}`, headers: { Authorization: `Bearer ${proxy.token}` } };
+  if (config.riotKey) {
+    return { url: `https://${region}.api.riotgames.com/${path}`, headers: { 'X-Riot-Token': config.riotKey } };
   }
-  return { url: `https://${region}.api.riotgames.com/${path}`, headers: { 'X-Riot-Token': config.riotKey } };
+  return { url: `${proxy.url}/riot/${region}/${path}`, headers: { Authorization: `Bearer ${proxy.token}` } };
 }
 
 // Unlike the others, OpenAI is opt-in. In proxy mode we cannot see which

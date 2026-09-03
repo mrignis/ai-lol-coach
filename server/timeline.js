@@ -130,4 +130,3 @@ function momentum(gameTime) {
   return 'last 2 minutes traded evenly';
 }
 
-export function resetTimeline() { current = null; }

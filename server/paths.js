@@ -8,7 +8,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 // A dev checkout keeps using the project directory (both are gitignored).
 const packaged = HERE.includes('app.asar');
 
-export const DATA_ROOT = process.env.LOLCOACH_DATA_DIR
+const DATA_ROOT = process.env.LOLCOACH_DATA_DIR
   || (packaged && process.env.APPDATA
     ? path.join(process.env.APPDATA, 'lol-coach')
     : path.join(HERE, '..'));

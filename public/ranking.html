@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ladder · AI LoL Coach</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header class="head">
+      <div class="langbar"><select id="lang" class="field lang" aria-label="Language"></select></div>
+      <h1 data-i18n="ladderTitle">Ladder</h1>
+      <p class="tag" data-i18n="ladderTag">Who is at the top right now — pick a region, a tier and a queue.</p>
+    </header>
+
+    <nav class="mainnav">
+      <a href="/" class="navbtn" data-i18n="navHome">Home</a>
+      <a href="/builds.html" class="navbtn" data-i18n="navBuilds">Builds</a>
+      <a href="/ranking.html" class="navbtn active" data-i18n="navLadder">Ladder</a>
+      <a href="/live.html" class="navbtn" data-i18n="navBot">Live Bot</a>
+    </nav>
+
+    <div class="controls">
+      <select id="lbRegion" class="field" aria-label="Region"></select>
+      <select id="lbTier" class="field" aria-label="Tier">
+        <option value="challenger" data-i18n="tierChallenger">Challenger</option>
+        <option value="grandmaster" data-i18n="tierGrandmaster">Grandmaster</option>
+        <option value="master" data-i18n="tierMaster">Master</option>
+        <option value="diamond" data-i18n="tierDiamond">Diamond</option>
+        <option value="emerald" data-i18n="tierEmerald">Emerald</option>
+        <option value="platinum" data-i18n="tierPlatinum">Platinum</option>
+        <option value="gold" data-i18n="tierGold">Gold</option>
+        <option value="silver" data-i18n="tierSilver">Silver</option>
+        <option value="bronze" data-i18n="tierBronze">Bronze</option>
+        <option value="iron" data-i18n="tierIron">Iron</option>
+      </select>
+      <!-- Only the tiers below Master have divisions. -->
+      <select id="lbDivision" class="field" aria-label="Division" hidden>
+        <option value="I">I</option><option value="II">II</option>
+        <option value="III">III</option><option value="IV">IV</option>
+      </select>
+      <select id="lbQueue" class="field" aria-label="Queue">
+        <option value="solo" data-i18n="queueSolo">Solo/Duo</option>
+        <option value="flex" data-i18n="queueFlex">Flex</option>
+      </select>
+    </div>
+
+    <!-- Shown for sub-apex tiers, where Riot returns an unordered page rather
+         than a ranking — the page must not imply these are places 1..50. -->
+    <p id="lbSample" class="mix-note" data-i18n="ladderSample" hidden>Riot only ranks Master and above. Below that this is a sample of players in the division, not places 1–50.</p>
+
+    <p id="lbError" class="error" hidden></p>
+
+    <section id="lbLoading" class="loading" hidden>
+      <div class="spinner"></div>
+      <p data-i18n="ladderLoading">reading the ladder…</p>
+    </section>
+
+    <section id="lbResult" class="card" hidden>
+      <div class="news-head">
+        <h3 id="lbHeading"></h3>
+        <span id="lbCount" class="muted"></span>
+      </div>
+      <div class="lb-wrap">
+        <table class="lb">
+          <thead>
+            <tr>
+              <th class="lb-place">#</th>
+              <th data-i18n="ladderPlayer">Player</th>
+              <th class="lb-num" data-i18n="ladderLp">LP</th>
+              <th class="lb-num" data-i18n="ladderRecord">W / L</th>
+              <th class="lb-num" data-i18n="ladderWr">Win rate</th>
+            </tr>
+          </thead>
+          <tbody id="lbRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="foot muted" data-i18n="footer">Official Riot API · post-game coaching only · not affiliated with Riot Games</footer>
+  </main>
+  <script src="i18n.js"></script>
+  <script src="ranking.js"></script>
+</body>
+</html>

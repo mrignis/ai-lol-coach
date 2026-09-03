@@ -9,6 +9,7 @@ import { visionTip } from './llm.js';
 import { matchupBrief } from './meta.js';
 import { getNews } from './news.js';
 import { getChampions } from './ddragon.js';
+import { leaderboard, TIERS, DIVISIONS, QUEUES } from './leaderboard.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -187,6 +188,21 @@ app.get('/api/matchup', async (req, res) => {
     if (e.code === 'NOGAME') return res.json({ inGame: false });
     console.error('[matchup]', e.message);
     res.json({ inGame: false, error: 'matchup_failed' });
+  }
+});
+
+// Top of the ladder for one region/tier/queue.
+app.get('/api/leaderboard', async (req, res) => {
+  const platform = PLATFORMS.some(p => p.id === req.query.region) ? req.query.region : 'na1';
+  const tier = TIERS.includes(req.query.tier) ? req.query.tier : 'challenger';
+  const queue = QUEUES[req.query.queue] ? req.query.queue : 'solo';
+  const division = DIVISIONS.includes(req.query.division) ? req.query.division : 'I';
+  if (!canRiot) return res.status(500).json({ error: 'no_riot_key' });
+  try {
+    res.json(await leaderboard(platform, tier, queue, division));
+  } catch (e) {
+    console.error('[leaderboard]', e.message);
+    res.status(e.code === 429 ? 429 : 500).json({ error: 'leaderboard_failed' });
   }
 });
 

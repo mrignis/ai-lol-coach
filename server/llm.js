@@ -109,7 +109,7 @@ const LANG_TERMS = {
 // call, and Groq's free tier caps TOKENS per minute (8000) rather than calls.
 // Trimming the rule for the live path roughly halves the cost of a tip, which
 // is the difference between ~3 and ~6 tips a minute before the cap bites.
-export function shortLanguageRule(lang) {
+function shortLanguageRule(lang) {
   const langName = LANG_NAMES[lang];
   if (!lang || lang === 'en' || !langName) return '';
   return `\n\nLANGUAGE — write in natural ${langName}, informal singular, imperative ` +
@@ -150,11 +150,34 @@ export function languageRule(lang) {
 function buildPrompt({ rank, role, bucket, roleMixed, weaknesses, lang, progress }) {
   const system =
     'You are a friendly, direct League of Legends coach. You know THIS player from their ' +
-    'own recent games — never give generic tier-list advice. No filler. Speak to them directly ("you"). ' +
-    'For each weakness: name the problem plainly, cite their own number vs the benchmark, and give ONE ' +
-    'specific thing to do next game. Output exactly 3 numbered points, at most 2 sentences each, ' +
-    'and stop after the third — hard limit 150 words for the whole reply, so there is never a ' +
-    'sentence left hanging.' +
+    'own recent games — never give generic tier-list advice. No filler. Speak to them directly ("you").\n' +
+
+    // The old version capped the whole reply at 150 words across three points,
+    // which left room for the instruction and nothing else — the advice came
+    // out as "ask yourself what kills you before each move", true of every
+    // player at every rank. The depth below is the entire point of the report.
+    // Section names are structure for you, never text for the player: an
+    // earlier version printed "READ" and "KEEP" as literal English headings in
+    // the middle of a Ukrainian report.
+    'Write it in this order, with a blank line between sections. Do NOT print any section heading, ' +
+    'label or title — the player sees only the prose:\n' +
+    'First paragraph: two sentences on what kind of player their numbers describe. Not a summary of ' +
+    'the list below: the pattern connecting the numbers. Two stats that explain each other are worth ' +
+    'more than either alone.\n' +
+    'Then exactly 3 numbered fixes, most damaging first. Each one covers, in flowing prose and in ' +
+    'this order:\n' +
+    '  a) what the number actually costs them, in gold, tempo or map control — not the number restated;\n' +
+    '  b) WHY it is happening for a player in their role at their rank. This is the part that makes it ' +
+    'coaching: name the concrete situation that produces it (the recall they take at the wrong time, ' +
+    'the fight they join with the wave pushing towards the enemy, the ward they place after the ' +
+    'objective already spawned);\n' +
+    '  c) the change itself, specific enough to do without thinking — a timing, a trigger, a rule with ' +
+    'a number in it;\n' +
+    '  d) how they will know next game whether it worked, in one short clause.\n' +
+    'Last paragraph: one sentence on the thing they already do well, so they do not trade it away ' +
+    'chasing the fixes. It must not contradict the fixes above — do not praise a habit and then tell ' +
+    'them to drop it.\n' +
+    'Around 350 words, hard limit 420. Never leave a sentence unfinished.' +
     FORMAT_RULE + languageRule(lang);
 
   const rankStr = rank ? `${rank.tier} ${rank.rank} (${bucket}-elo benchmarks)` : `unranked (${bucket}-elo benchmarks)`;
@@ -168,8 +191,12 @@ function buildPrompt({ rank, role, bucket, roleMixed, weaknesses, lang, progress
   if (progress && progress.length) {
     const fmtT = t => `${t.key}: ${t.from.toFixed(2)} → ${t.to.toFixed(2)} (${t.better ? 'improving' : 'getting worse'})`;
     progressNote =
+      // Folded into the opening paragraph rather than bolted on before it: as a
+      // separate instruction it produced a stray congratulation above the read,
+      // which then contradicted the closing line.
       '\nProgress vs their recent sessions:\n' + progress.map(fmtT).join('\n') +
-      '\nOpen with ONE short sentence acknowledging the biggest improvement (if any), then focus the 3 fixes on what is stagnant or getting worse.';
+      '\nWork the biggest improvement into the opening paragraph itself, not as a separate line above ' +
+      'it, and aim the 3 fixes at what is stagnant or getting worse.';
   }
 
   const user =
@@ -177,7 +204,7 @@ function buildPrompt({ rank, role, bucket, roleMixed, weaknesses, lang, progress
     (ROLE_BRIEF[role] ? ROLE_BRIEF[role] + '\n' : '') +
     `Their 3 biggest personal weaknesses vs players at their level:\n` +
     weaknesses.map(gapLine).join('\n') + mixNote + progressNote +
-    `\n\nWrite their "3 things to fix" now.`;
+    `\n\nWrite their report now: the read, the 3 fixes, and what to keep.`;
 
   return { system, user };
 }
@@ -672,7 +699,10 @@ export async function coach(ctx) {
   try {
     // 'medium' reasoning: the post-game write-up is long-form prose in the
     // player's own language and 'low' effort produced clipped/invented words.
-    const r = await callLLM(prompt.system, prompt.user, { effort: 'medium' });
+    // The budget has to cover ~420 words of Ukrainian AND the reasoning tokens,
+    // which share the same ceiling on gpt-5 — the default 900 truncated the
+    // report mid-sentence once the write-up grew past three short points.
+    const r = await callLLM(prompt.system, prompt.user, { effort: 'medium', maxTokens: 2600 });
     if (r?.text) return { text: r.text, source: r.provider };
   } catch (e) {
     console.warn('[llm] all providers failed, using template fallback:', e.message);

@@ -585,3 +585,17 @@ body.lg .rot-champ span { font-size: 10px; }
   body.lg .game-row { grid-template-columns: 3px 26px minmax(0, 1fr) auto; }
   body.lg .game-row .g-cs { display: none; }
 }
+
+/* ── Ladder table ── */
+.lb-wrap { overflow-x: auto; }
+.lb { width: 100%; border-collapse: collapse; font-size: 14px; }
+.lb th { text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .5px; color: var(--muted); padding: 0 10px 8px; white-space: nowrap; }
+.lb td { padding: 9px 10px; border-top: 1px solid var(--line); }
+.lb tbody tr:hover { background: var(--panel-2); }
+.lb .lb-place { width: 1%; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.lb .lb-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lb .lb-name { font-weight: 600; }
+.lb .lb-tag { color: var(--muted); font-weight: 400; }
+/* The top three carry the page — worth reading at a glance. */
+.lb tbody tr:nth-child(-n+3) .lb-place { color: var(--gold); font-weight: 700; }

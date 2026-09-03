@@ -1,4 +1,3 @@
-const $ = id => document.getElementById(id);
 
 let bucket = localStorage.getItem('lolcoach_bucket') || 'mid';
 $('bucket').value = bucket;
