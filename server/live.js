@@ -205,8 +205,25 @@ async function gameContext(data, me, bucket = 'mid') {
     isDead: !!me.isDead,
     respawnTimer: Math.round(me.respawnTimer || 0),
     fedEnemy: fed ? { champion: fed.championName, k: fed.scores.kills, d: fed.scores.deaths, a: fed.scores.assists } : null,
-    allies: mine.map(p => ({ champion: p.championName, k: p.scores.kills, d: p.scores.deaths, a: p.scores.assists, lvl: p.level, cs: p.scores.creepScore })),
-    enemies: foes.map(p => ({ champion: p.championName, k: p.scores.kills, d: p.scores.deaths, a: p.scores.assists, lvl: p.level, cs: p.scores.creepScore })),
+    // `position` and `isMe` are what let the coach say "group with Rakan"
+    // instead of "group with your support", and stop it referring to the
+    // player's own champion in the third person. The Live API has had the
+    // field all along — it just never reached the prompt.
+    allies: mine.map(p => ({
+      champion: p.championName, position: p.position || null,
+      isMe: (p.riotId || p.summonerName) === myName,
+      k: p.scores.kills, d: p.scores.deaths, a: p.scores.assists, lvl: p.level, cs: p.scores.creepScore,
+    })),
+    enemies: foes.map(p => ({
+      champion: p.championName, position: p.position || null,
+      k: p.scores.kills, d: p.scores.deaths, a: p.scores.assists, lvl: p.level, cs: p.scores.creepScore,
+    })),
+    // The bot-lane pair specifically: 62% of one recorded game's tips said
+    // "with your support" without ever naming them, while every other ally was
+    // named freely.
+    lanePartner: me.position === 'BOTTOM'
+      ? mine.find(p => p.position === 'UTILITY')?.championName || null
+      : (me.position === 'UTILITY' ? mine.find(p => p.position === 'BOTTOM')?.championName || null : null),
   };
 }
 

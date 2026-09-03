@@ -513,11 +513,22 @@ function buildContextLines(me, gameTimeSec, role, ctx) {
       lines.push(`COUNTER-BUILD READ: ${ctx.counter.text}` +
         (ctx.myCurrentGold != null ? ` You are carrying ${ctx.myCurrentGold} gold.` : ''));
     }
+    // Positions are spelled out so the coach can name the right person for the
+    // job. Without them it fell back on the generic word for a role — one
+    // recorded game said "with your support" 44 times in 71 tips and never
+    // once named them, while every other ally was named freely.
+    const pos = p => (p.position ? ` [${p.position}]` : '');
     if (ctx.enemies?.length) {
-      lines.push('Enemy team: ' + ctx.enemies.map(p => `${mark(p.champion)} ${p.k}/${p.d}/${p.a} lvl${p.lvl}`).join(', ') + '.');
+      lines.push('Enemy team: ' + ctx.enemies
+        .map(p => `${mark(p.champion)}${pos(p)} ${p.k}/${p.d}/${p.a} lvl${p.lvl}`).join(', ') + '.');
     }
     if (ctx.allies?.length) {
-      lines.push('Your team: ' + ctx.allies.map(p => `${p.champion} ${p.k}/${p.d}/${p.a} lvl${p.lvl}`).join(', ') + '.');
+      lines.push('Your team: ' + ctx.allies
+        .map(p => `${p.champion}${pos(p)}${p.isMe ? ' — THIS IS YOU' : ''} ${p.k}/${p.d}/${p.a} lvl${p.lvl}`)
+        .join(', ') + '.');
+    }
+    if (ctx.lanePartner) {
+      lines.push(`Your lane partner is ${ctx.lanePartner} — call them by name, never "your support" or "your ADC".`);
     }
   }
   return lines;
@@ -546,6 +557,11 @@ const COACH_SYSTEM = (phase, lang, role) => {
     '"Buy"). Never open with the dictionary form of a verb, a noun phrase, or a description — in ' +
     'languages that distinguish them, that means the imperative, never the infinitive.\n' +
     '- Anchor to something real you were given: a champion name, a timer, a number, an item.\n' +
+    '- The player IS the champion marked "THIS IS YOU". Their kit, cooldowns and ultimate are ' +
+    '"yours" / "your ultimate" — NEVER refer to that champion by name in the third person, as if ' +
+    'they were a teammate you are discussing.\n' +
+    '- Name teammates by champion. Never write "your support", "your ADC", "your jungler" when the ' +
+    'roster in front of you says who that is.\n' +
     '- One concrete action, plus the reason in the same breath. Then stop.\n' +
     '- If you name a threat, say the counter-play (where to stand, what to buy, what to wait for).\n' +
 
