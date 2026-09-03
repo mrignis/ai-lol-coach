@@ -91,6 +91,13 @@ const LANG_TERMS = {
       'золота за хвилину, КС за хвилину) · "візія"/"візій" (write огляд)',
     'Never glue an English word to a Ukrainian ending with a hyphen. Every noun must agree with ' +
       'its adjective in gender and number ("захисне вміння", never "захисний уміння").',
+    // One 55-minute game spelled the same ally "Kai\'Sa", "Кай’Sa" and "Кай’Са".
+    'Champion names: copy them EXACTLY as the client spells them, in Latin letters, every time — ' +
+      'Kai\'Sa, Kha\'Zix, Nunu & Willump. Never transliterate a champion name into Cyrillic and ' +
+      'never mix alphabets inside one name.',
+    'Fighting someone is "проти <Champion>" or "з <Champion>" — never "у <Champion>". ' +
+      'Contesting an objective is "не борись за баф" / "не контестуй барона" — "оскаржувати" is a ' +
+      'legal term and is wrong here.',
   ].map(s => '  ' + s).join('\n'),
 };
 
@@ -535,10 +542,19 @@ const COACH_SYSTEM = (phase, lang, role) => {
     FORMAT_RULE + shortLanguageRule(lang);
 };
 
-export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang }) {
+export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang, recentTips = [] }) {
   const phase = ctx?.phase || 'mid';
   const system = COACH_SYSTEM(phase, lang, role);
   const lines = buildContextLines(me, gameTimeSec, role, ctx);
+  // Each tip was generated with no idea what the previous ones said, so the
+  // coach circled one theme for a whole match — a 55-minute game got "clear
+  // vision near Baron" four separate times, reworded.
+  if (recentTips.length) {
+    lines.push('\nYOU ALREADY TOLD THIS PLAYER, most recent last:\n  - ' + recentTips.join('\n  - ') +
+      '\nDo NOT repeat those points or restate them in different words. If the situation genuinely ' +
+      'has not moved on, pick a DIFFERENT angle that is still true — their build, a cooldown, a ' +
+      'teammate to group with, where to stand in the next fight, what to do with the wave.');
+  }
   lines.push('What is the single most useful thing to do right now?');
   const user = lines.join('\n');
   let why = 'no_provider';

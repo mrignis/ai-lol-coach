@@ -155,7 +155,10 @@ app.get('/api/live-coach', async (req, res) => {
         && Date.now() - textTipState.ts < textTtl) {
       return res.json(textTipState.data);
     }
-    const out = await liveCoachResponse(bucket, wantLang);
+    // Hand the model what it just said: without it the coach circled the same
+    // theme all game ("clear vision near Baron" four times in one match).
+    const recentTips = tipLog.filter(t => t.tip).slice(-3).map(t => t.tip);
+    const out = await liveCoachResponse(bucket, wantLang, recentTips);
     if (out.ready && out.tip) textTipState = { data: out, ts: Date.now(), lang: wantLang, sit };
     if (out.ready) recordTip({ source: out.source, why: out.why, tip: out.tip, code: out.code, sit, hot });
     res.json(out);

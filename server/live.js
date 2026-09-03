@@ -335,7 +335,7 @@ export async function buildLiveResponse(data, bucket = 'mid') {
 }
 
 // LLM-backed single live recommendation (polled less often than the widget).
-export async function liveCoachResponse(bucket = 'mid', lang = 'en') {
+export async function liveCoachResponse(bucket = 'mid', lang = 'en', recentTips = []) {
   const data = await fetchLiveData();
   const base = await buildLiveResponse(data, bucket);
   if (!base.ready) return { inGame: base.inGame !== false, ready: false };
@@ -346,6 +346,7 @@ export async function liveCoachResponse(bucket = 'mid', lang = 'en') {
     nudges: base.nudges,
     ctx: base.ctx,
     lang,
+    recentTips,
   });
   // tip = LLM prose (already in `lang`); code/params = template the client localizes.
   return { inGame: true, ready: true, tip, code, params, source, why };
