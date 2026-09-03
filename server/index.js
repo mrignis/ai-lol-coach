@@ -125,6 +125,7 @@ function recordTip(entry) {
 }
 let lastCoachLang = 'en'; // vision calls happen out-of-band, so remember the UI language
 let lastGameTime = 0;     // detects a new game so tip history does not leak across matches
+let lastLoggedVisionTs = 0; // one log line per screenshot tip, not per poll that replays it
 
 // Read-only view of tips already served — for diagnostics, costs nothing.
 app.get('/api/tips-log', (req, res) => {
@@ -152,10 +153,21 @@ app.get('/api/live-coach', async (req, res) => {
     // and read as frozen. Two poll intervals exactly caps it at 36s, and costs
     // one extra call per quiet minute rather than a faster poll everywhere.
     const textTtl = hot ? 12000 : 36000;
-    const visionTtl = hot ? 20000 : 90000;
+    // 54s, down from 90s. This check runs FIRST and returns early, so a fresh
+    // screenshot tip suppressed text tips for a minute and a half — which is
+    // what actually made the widget look frozen. Trimming textTtl alone did
+    // nothing, because this cache sits in front of it.
+    const visionTtl = hot ? 20000 : 54000;
 
     if (visionState.tip && visionState.lang === wantLang && visionState.sit === sit
         && Date.now() - visionState.ts < visionTtl) {
+      // Recorded so a play-test sees what was actually ON SCREEN. This path
+      // used to return without logging, so every recording showed only the
+      // text tips and made the gaps between them look like the whole story.
+      if (visionState.ts !== lastLoggedVisionTs) {
+        lastLoggedVisionTs = visionState.ts;
+        recordTip({ source: 'vision', tip: visionState.tip, sit, hot });
+      }
       return res.json({ inGame: true, ready: true, tip: visionState.tip, source: 'vision' });
     }
     if (textTipState.data && textTipState.lang === wantLang && textTipState.sit === sit

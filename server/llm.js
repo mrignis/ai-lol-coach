@@ -656,9 +656,14 @@ export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang, recent
   const user = lines.join('\n');
   let why = 'no_provider';
   try {
-    // medium, like the post-game coach: at low effort the model drops into
-    // infinitives and slips Russian words into Ukrainian tips.
-    const r = await callLLM(system, user, { effort: 'medium', maxTokens: 1100 });
+    // `effort` reaches Groq only, and Groq is now just the fallback behind
+    // OpenAI. At 'medium' its reasoning ate the whole 1100-token budget and it
+    // returned an empty message, so a recorded game fell all the way through to
+    // a localized template twice. 'low' costs some polish in the fallback — the
+    // reason the post-game coach still asks for 'medium' — but a slightly
+    // rougher sentence beats no sentence, and the extra headroom leaves room
+    // for the visible answer.
+    const r = await callLLM(system, user, { effort: 'low', maxTokens: 1400 });
     if (r?.text) return { tip: r.text.trim(), source: r.provider };
     why = 'empty_response';
   } catch (e) {
