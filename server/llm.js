@@ -105,6 +105,13 @@ const LANG_TERMS = {
     // "мідa" and "виході до мідa" — a Latin "a" ending a Cyrillic word.
     'Never put a Latin letter inside a Cyrillic word. Words like "міда", "барона", "дракона" end ' +
       'in the Cyrillic letter "а" — check every word ending before you output it.',
+    // Seven tips in one game wrote things like "яма Oracle Lens" and "почисти
+    // Oracle Lens огляд" — the sweeper trinket used as a place or an adjective.
+    'Trinkets are things you USE, never places and never adjectives. Oracle Lens and Farsight ' +
+      'Alteration are items in your trinket slot: write "почисти варди" or "почисти варди ' +
+      'підмітальником", NEVER "почисти Oracle Lens огляд", "яма Oracle Lens" or "Барона Oracle ' +
+      'Lens". An item name may never be glued to a location — the pit is "яма Барона", the river ' +
+      'is "річка", and no item name belongs in either.',
   ].map(s => '  ' + s).join('\n'),
 };
 

@@ -147,7 +147,11 @@ app.get('/api/live-coach', async (req, res) => {
     // `hot` (not the mere presence of `sit`) decides: the signature is always
     // populated now that it also carries the event count.
     const hot = req.query.hot === '1';
-    const textTtl = hot ? 12000 : 45000;
+    // 36s, not 45s, because the widget asks every 18s: a 45s cache is only
+    // spent on the third poll, so a quiet stretch showed the same line for 54s
+    // and read as frozen. Two poll intervals exactly caps it at 36s, and costs
+    // one extra call per quiet minute rather than a faster poll everywhere.
+    const textTtl = hot ? 12000 : 36000;
     const visionTtl = hot ? 20000 : 90000;
 
     if (visionState.tip && visionState.lang === wantLang && visionState.sit === sit
@@ -162,9 +166,13 @@ app.get('/api/live-coach', async (req, res) => {
     // theme all game ("clear vision near Baron" four times in one match).
     const withTips = tipLog.filter(t => t.tip);
     const recentTips = withTips.slice(-3).map(t => t.tip);
-    // A much wider window feeds the purchase-order guard — item nagging spans
-    // twenty minutes, well past anything the model can see in three tips.
-    const tipHistory = withTips.slice(-20).map(t => t.tip);
+    // The purchase-order guard gets the WHOLE game, not a window. A twenty-tip
+    // window still let Null-Magic Mantle through eight times in one match: the
+    // asks arrived in pairs minutes apart (3:42 + 6:02, then 17:53 + 18:23,
+    // then 26:14 + 27:09), and each pair scrolled out before the next, so the
+    // count reset to zero every time. "They already refused this" is a fact
+    // about the game, not about the last few minutes.
+    const tipHistory = withTips.map(t => t.tip);
     const out = await liveCoachResponse(bucket, wantLang, recentTips, tipHistory);
     // A clock that went backwards means a new game: the previous match's advice
     // must not suppress items in this one.
