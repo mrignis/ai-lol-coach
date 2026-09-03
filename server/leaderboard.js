@@ -1,4 +1,5 @@
 import { getApexLeague, getLeaguePage, getRiotId } from './riot.js';
+import * as cache from './cache.js';
 
 // Riot ranks only the three apex tiers. Those come back as a real ordered
 // ladder; everything below is an unordered page of players in one division,
@@ -9,28 +10,48 @@ export const DIVISIONS = ['I', 'II', 'III', 'IV'];
 export const QUEUES = { solo: 'RANKED_SOLO_5x5', flex: 'RANKED_FLEX_SR' };
 
 const TOP_N = 50;
-const NAME_CONCURRENCY = 6; // the ladder gives puuids; names are one call each
+const NAME_TTL = 7 * 24 * 3600 * 1000;
 
-// Resolve names a few at a time. Sequentially this took ~20s on a cold cache;
-// unbounded it trips Riot's per-second limit and every request starts backing
-// off, which is slower still.
-async function withNames(rows, platform) {
-  const out = [];
-  for (let i = 0; i < rows.length; i += NAME_CONCURRENCY) {
-    const chunk = rows.slice(i, i + NAME_CONCURRENCY);
-    out.push(...await Promise.all(chunk.map(async row => {
-      if (!row.puuid) return row;
-      // A single unresolved name must not empty the whole ladder, so the row
-      // is kept and the page falls back to showing the rank without a name.
-      try {
-        const acct = await getRiotId(row.puuid, platform);
-        return { ...row, name: acct.gameName, tag: acct.tagLine };
-      } catch {
-        return row;
-      }
-    })));
+// The ladder returns puuids, and a name is one Riot call each. Fifty of those
+// per page view does not fit the key's budget of 100 requests per two minutes:
+// resolving them inline made a single lookup take 47 SECONDS once the key was
+// in back-off, and the whole page waited on it.
+//
+// So the request never blocks on a name. It returns whatever is already
+// cached, and the rest are filled in by a background queue at a pace the key
+// can sustain; the client asks again and the names appear. Only the ladder
+// currently on screen is worth resolving, so a new request REPLACES the queue
+// rather than appending to it — switching regions must not leave the previous
+// region's fifty names ahead of yours.
+const NAME_PACE_MS = 250; // ~4 req/s, comfortably inside every Riot limit
+let queue = [];
+let draining = false;
+
+async function drain() {
+  if (draining) return;
+  draining = true;
+  while (queue.length) {
+    const { puuid, platform } = queue.shift();
+    try {
+      await getRiotId(puuid, platform); // populates the cache; result unused here
+    } catch { /* a name that will not resolve is not worth retrying in a loop */ }
+    await new Promise(r => setTimeout(r, NAME_PACE_MS));
   }
-  return out;
+  draining = false;
+}
+
+async function attachCachedNames(rows, platform) {
+  const missing = [];
+  const out = await Promise.all(rows.map(async row => {
+    if (!row.puuid) return row;
+    const hit = await cache.get(`name_${row.puuid}`, NAME_TTL);
+    if (hit) return { ...row, name: hit.gameName, tag: hit.tagLine };
+    missing.push({ puuid: row.puuid, platform });
+    return row;
+  }));
+  queue = missing;
+  if (missing.length) drain();
+  return { players: out, pending: missing.length };
 }
 
 export async function leaderboard(platform, tier, queueKey, division = 'I') {
@@ -58,10 +79,12 @@ export async function leaderboard(platform, tier, queueKey, division = 'I') {
       };
     });
 
+  const { players, pending } = await attachCachedNames(entries, platform);
   return {
     platform, tier, queue: queueKey,
     division: isApex ? null : division,
     ranked: isApex, // false = a sample of the division, not places 1..50
-    players: await withNames(entries, platform),
+    pending,        // names still resolving; the client re-asks while > 0
+    players,
   };
 }

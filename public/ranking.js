@@ -44,11 +44,28 @@ function render(d) {
 }
 
 let inFlight = 0;
-async function load() {
+let refill = null;
+
+// The server answers immediately with the names it already had and resolves
+// the rest at a pace Riot's rate limit allows, so the table is on screen in
+// well under a second and fills in as they arrive.
+function scheduleRefill(run, tries) {
+  clearTimeout(refill);
+  if (tries <= 0) return;
+  refill = setTimeout(() => { if (run === inFlight) load({ quiet: true, tries: tries - 1 }); }, 4000);
+}
+
+// 25 refills at 4s covers the ~90s a cold region of fifty names actually takes.
+// A refill costs one cache read per row and no Riot call, so it is nearly free.
+async function load({ quiet = false, tries = 25 } = {}) {
+  clearTimeout(refill); // a manual switch cancels a pending refill
   const run = ++inFlight; // a fast switch between regions must not render stale rows
   $('lbError').hidden = true;
-  $('lbResult').hidden = true;
-  $('lbLoading').hidden = false;
+  // A refill redraws in place; only a real switch clears the table first.
+  if (!quiet) {
+    $('lbResult').hidden = true;
+    $('lbLoading').hidden = false;
+  }
   localStorage.setItem('lolcoach_region', $('lbRegion').value);
   try {
     const q = new URLSearchParams({
@@ -60,8 +77,9 @@ async function load() {
     if (run !== inFlight) return;
     if (!res.ok || !d.players?.length) throw new Error('empty');
     render(d);
+    if (d.pending > 0) scheduleRefill(run, tries);
   } catch {
-    if (run !== inFlight) return;
+    if (run !== inFlight || quiet) return; // a failed refill keeps the table
     $('lbError').textContent = t('ladderFailed');
     $('lbError').hidden = false;
   } finally {
@@ -69,8 +87,41 @@ async function load() {
   }
 }
 
+// ── "Where am I" ──────────────────────────────────────────────────────
+// The sub-Master list is one page out of hundreds of thousands, so nobody
+// finds themselves in it. Asking Riot for the one player is the only answer.
+$('lbMeId').value = localStorage.getItem('lolcoach_riotid') || '';
+
+async function findMe() {
+  const riotId = cleanId($('lbMeId').value);
+  if (!riotId.includes('#')) return;
+  $('lbMe').hidden = false;
+  $('lbMe').textContent = t('ladderLoading');
+  $('lbMeGo').disabled = true;
+  try {
+    const q = new URLSearchParams({ riotId, region: $('lbRegion').value });
+    const d = await (await fetch('/api/myrank?' + q)).json();
+    if (!d.rank) { $('lbMe').textContent = t('unranked'); return; }
+    const r = d.rank;
+    const tierKey = 'tier' + r.tier[0] + r.tier.slice(1).toLowerCase();
+    const games = r.wins + r.losses;
+    $('lbMe').innerHTML = `<b>${escapeHtml(riotId)}</b> · `
+      + `${escapeHtml(t(tierKey) || r.tier)} ${escapeHtml(r.rank)} · `
+      + `<b class="num">${r.lp}</b> ${escapeHtml(t('ladderLp'))} · `
+      + `${r.wins}/${r.losses} · ${games ? Math.round((r.wins / games) * 100) : 0}%`;
+    localStorage.setItem('lolcoach_riotid', riotId);
+  } catch {
+    $('lbMe').textContent = t('ladderFailed');
+  } finally {
+    $('lbMeGo').disabled = false;
+  }
+}
+
+$('lbMeGo').addEventListener('click', findMe);
+$('lbMeId').addEventListener('keydown', e => { if (e.key === 'Enter') findMe(); });
+
 for (const id of ['lbRegion', 'lbTier', 'lbQueue', 'lbDivision']) {
-  $(id).addEventListener('change', load);
+  $(id).addEventListener('change', () => load());
 }
 $('lbTier').addEventListener('change', syncTier);
 syncTier();
@@ -80,4 +131,4 @@ applyStatic();
 // Only the headings are localized — the ladder itself is names and numbers.
 document.addEventListener('langchange', () => { if (!$('lbResult').hidden) load(); });
 
-loadRegions().then(load);
+loadRegions().then(() => load());

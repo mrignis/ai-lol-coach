@@ -1,6 +1,5 @@
 // Copying a Riot ID from a browser or chat carries invisible bidi/zero-width
 // marks. They don't show in the input but make the Riot lookup 404.
-const cleanId = s => String(s || '').replace(/[\u00AD\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').trim();
 
 
 let loadTimer = null;

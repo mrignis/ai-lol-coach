@@ -48,7 +48,14 @@
 
     <!-- Shown for sub-apex tiers, where Riot returns an unordered page rather
          than a ranking — the page must not imply these are places 1..50. -->
-    <p id="lbSample" class="mix-note" data-i18n="ladderSample" hidden>Riot only ranks Master and above. Below that this is a sample of players in the division, not places 1–50.</p>
+    <p id="lbSample" class="mix-note" data-i18n="ladderSample" hidden>Riot only ranks Master and above. Below that Riot returns one page of about 200 players out of the hundreds of thousands in that division — so this is a sample, not places 1–50, and you will not find yourself here.</p>
+
+    <!-- "Where am I" — the sample above cannot answer it, so ask directly. -->
+    <div class="me-row">
+      <input id="lbMeId" class="field" type="text" placeholder="Name#TAG" data-i18n-ph="placeholder" autocomplete="off" />
+      <button id="lbMeGo" class="btn" type="button" data-i18n="ladderFindMe">Find my rank</button>
+    </div>
+    <p id="lbMe" class="me-out" hidden></p>
 
     <p id="lbError" class="error" hidden></p>
 

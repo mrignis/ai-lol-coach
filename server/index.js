@@ -9,6 +9,7 @@ import { visionTip } from './llm.js';
 import { matchupBrief } from './meta.js';
 import { getNews } from './news.js';
 import { getChampions } from './ddragon.js';
+import { getAccount, getRank } from './riot.js';
 import { leaderboard, TIERS, DIVISIONS, QUEUES } from './leaderboard.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -203,6 +204,23 @@ app.get('/api/leaderboard', async (req, res) => {
   } catch (e) {
     console.error('[leaderboard]', e.message);
     res.status(e.code === 429 ? 429 : 500).json({ error: 'leaderboard_failed' });
+  }
+});
+
+// One player's own standing — the ladder below Master is a single page out of
+// hundreds of thousands, so "where am I" cannot be answered by scanning it.
+app.get('/api/myrank', async (req, res) => {
+  const platform = PLATFORMS.some(p => p.id === req.query.region) ? req.query.region : 'na1';
+  const riotId = String(req.query.riotId || '').trim();
+  if (!riotId.includes('#')) return res.status(400).json({ error: 'bad_riot_id' });
+  try {
+    const [gameName, tagLine] = riotId.split('#');
+    const acct = await getAccount(gameName.trim(), tagLine.trim(), platform);
+    res.json({ riotId, rank: await getRank(acct.puuid, platform) });
+  } catch (e) {
+    if (e.code === 404) return res.status(404).json({ error: 'not_found' });
+    console.error('[myrank]', e.message);
+    res.status(500).json({ error: 'myrank_failed' });
   }
 });
 

@@ -599,3 +599,10 @@ body.lg .rot-champ span { font-size: 10px; }
 .lb .lb-tag { color: var(--muted); font-weight: 400; }
 /* The top three carry the page — worth reading at a glance. */
 .lb tbody tr:nth-child(-n+3) .lb-place { color: var(--gold); font-weight: 700; }
+
+/* "Where am I" lookup on the ladder page */
+.me-row { display: flex; gap: 8px; margin: 12px 0 0; }
+.me-row .field { flex: 1 1 200px; min-width: 0; }
+.me-out { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
+.me-out b { color: var(--gold-soft); }
+.me-out .num { color: var(--gold); }
