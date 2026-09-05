@@ -116,7 +116,14 @@ async function loadAiTip(force = false) {
   try {
     const sit = encodeURIComponent(deadSignature());
     const hot = (lastLive?.ctx?.deadEnemies || []).length ? 1 : 0;
-    const d = await (await fetch(`/api/live-coach?bucket=${bucket}&lang=${getLang()}&sit=${sit}&hot=${hot}`)).json();
+    // A truly quiet stretch — nobody dead and no objective about to spawn — is
+    // told apart from a merely calm one, so the server can let a still-correct
+    // tip stand instead of paying for a reworded copy of it. Measured: a fifth
+    // of a game's tips were the timer firing with nothing at all having changed.
+    const baron = lastLive?.ctx?.baronUpIn;
+    const soon = Number.isFinite(baron) && baron > 0 && baron < 45 ? 1 : 0;
+    const d = await (await fetch(
+      `/api/live-coach?bucket=${bucket}&lang=${getLang()}&sit=${sit}&hot=${hot}&soon=${soon}`)).json();
     if (!d.inGame || !d.ready) { lastAi = null; return; }
     lastAi = d;
     renderAiTip();

@@ -172,7 +172,17 @@ app.get('/api/live-coach', async (req, res) => {
     // spent on the third poll, so a quiet stretch showed the same line for 54s
     // and read as frozen. Two poll intervals exactly caps it at 36s, and costs
     // one extra call per quiet minute rather than a faster poll everywhere.
-    const textTtl = hot ? 12000 : 36000;
+    // A tip costs ~592 output tokens no matter how small the change that
+    // prompted it — 512 of those are reasoning this model always spends, and
+    // reasoning_effort does not move it. Input is not the problem: 3026 of 3029
+    // prompt tokens come back as cache hits. So the only honest lever is making
+    // fewer calls, and the cheapest ones to drop are the tips that describe
+    // nothing new: a fifth of one recorded game was the timer firing while the
+    // situation signature had not moved at all. When nobody is dead and no
+    // objective is near, a still-correct tip is left standing rather than
+    // rewritten. Anything actually happening keeps the old pace.
+    const quiet = !hot && req.query.soon !== '1';
+    const textTtl = hot ? 12000 : (quiet ? 75000 : 36000);
     // 54s, down from 90s. This check runs FIRST and returns early, so a fresh
     // screenshot tip suppressed text tips for a minute and a half — which is
     // what actually made the widget look frozen. Trimming textTtl alone did
