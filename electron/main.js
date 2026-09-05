@@ -257,7 +257,7 @@ async function visionLoop() {
       height: Math.round(height * 0.40),
     });
     const resized = shot.resize({ width: 1280 });
-    await fetch(`http://localhost:${PORT}/api/vision`, {
+    const res = await fetch(`http://localhost:${PORT}/api/vision`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -265,7 +265,29 @@ async function visionLoop() {
         minimap: minimap.toJPEG(75).toString('base64'),
       }),
     });
-  } catch { /* vision is best-effort; the text-only tip still works */ }
+    // Screenshot tips run on Gemini, whose free quota is exhausted for days at
+    // a time. Retrying every minute regardless meant capturing a 1280px frame,
+    // JPEG-encoding it twice and shipping ~200KB — all discarded — during a
+    // game, which is exactly when the CPU is worth protecting. Back off after
+    // repeated refusals and recover the moment one succeeds.
+    const ok = res.ok && (await res.json().catch(() => ({}))).ok;
+    visionMisses = ok ? 0 : Math.min(visionMisses + 1, VISION_BACKOFF.length - 1);
+  } catch {
+    visionMisses = Math.min(visionMisses + 1, VISION_BACKOFF.length - 1);
+  }
+}
+
+// How many capture cycles to skip after N consecutive failures: none, none,
+// then one, three, nine. At the 60s tick that is a retry every ten minutes
+// while the provider stays down, instead of sixty wasted captures an hour.
+const VISION_BACKOFF = [0, 0, 1, 3, 9];
+let visionMisses = 0;
+let visionSkips = 0;
+
+function visionTick() {
+  if (visionSkips > 0) { visionSkips--; return; }
+  visionSkips = VISION_BACKOFF[visionMisses];
+  return visionLoop();
 }
 
 const alive = w => w && !w.isDestroyed();
@@ -401,8 +423,8 @@ app.whenReady().then(async () => {
   await openLauncher();
   setInterval(gameWatch, 8000);
   setTimeout(gameWatch, 2000);
-  setInterval(visionLoop, 60000);
-  setTimeout(visionLoop, 8000); // first look shortly after launch, not a minute later
+  setInterval(visionTick, 60000);
+  setTimeout(visionTick, 8000); // first look shortly after launch, not a minute later
   globalShortcut.register('Control+Shift+X', toggleClickThrough);
   globalShortcut.register('Control+Shift+H', toggleWidget);
 });

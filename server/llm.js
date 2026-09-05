@@ -576,7 +576,16 @@ function buildContextLines(me, gameTimeSec, role, ctx, overused = []) {
       lines.push(`Your lane partner is ${ctx.lanePartner} — call them by name, never "your support" or "your ADC".`);
     }
   }
-  return lines;
+  // Never hand the model the word "undefined". Every field is supplied today,
+  // but the whole context is built from Riot's live payload: one renamed field
+  // on their side and a line would read "Momentum: undefined", which the model
+  // would dutifully reason about and turn into confident nonsense. Dropping the
+  // line loses one fact; keeping it corrupts the answer.
+  return lines.filter(l => {
+    if (!/\b(undefined|NaN)\b/.test(l)) return true;
+    console.warn('[llm] dropped a context line with a missing value:', l.slice(0, 100));
+    return false;
+  });
 }
 
 const COACH_SYSTEM = (phase, lang, role, champBrief = '') => {
