@@ -606,3 +606,22 @@ body.lg .rot-champ span { font-size: 10px; }
 .me-out { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
 .me-out b { color: var(--gold-soft); }
 .me-out .num { color: var(--gold); }
+
+/* ── Role tabs: one per position actually played ──
+   Each role is measured against its own benchmarks, so a flex player sees each
+   half of their play instead of one blended number that describes neither. */
+body.lg .card-head { flex-wrap: wrap; }
+.role-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.role-tab {
+  background: var(--lg-card-2); border: 1px solid var(--lg-line); color: var(--muted);
+  border-radius: 999px; padding: 3px 10px; font-size: 11px; font-weight: 600;
+  cursor: pointer; line-height: 1.6; transition: background .15s, color .15s, border-color .15s;
+}
+.role-tab:hover { color: var(--gold-soft); border-color: var(--lg-line-2); }
+.role-tab.on { background: var(--cyan); border-color: transparent; color: #0b0f15; }
+.role-tab-n { opacity: .6; font-weight: 500; margin-left: 3px; }
+.role-tab.on .role-tab-n { opacity: .8; }
+/* Sample line under the tabs. Gold when the sample is too thin to be a verdict —
+   the same colour this UI already uses for "read this with care". */
+.role-scope { font-size: 11.5px; margin: 0; padding: 10px 14px 0; line-height: 1.45; }
+.role-scope.thin { color: var(--gold); }

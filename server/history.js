@@ -27,8 +27,15 @@ const METRIC_DIR = { csPerMin: 'higher', visPerMin: 'higher', kp: 'higher', deat
 
 // Compare the current metrics against the average of up to 5 previous
 // sessions. Returns only meaningful moves (>=3%), best news first.
-export function computeTrends(history, current) {
-  const prev = history.slice(-5);
+// Entries written before metrics were split by role hold blended numbers, and
+// comparing today's single-role figure against them invents a collapse that
+// never happened — a support whose CS went from a blended 3.3 to a true 1.5 was
+// shown "-54%". Only entries measured the same way are comparable, so every
+// entry now carries its basis and older ones are skipped once.
+export const METRICS_BASIS = 'role';
+
+export function computeTrends(history, current, basis = METRICS_BASIS) {
+  const prev = history.filter(r => r.basis === basis).slice(-5);
   if (!prev.length) return null;
   const out = [];
   for (const key of Object.keys(METRIC_DIR)) {

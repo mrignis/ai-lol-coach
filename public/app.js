@@ -66,6 +66,65 @@ function fmtMetric(key, v) {
 
 // One "personal pattern" row: label, the two numbers, and a bar that grows
 // left (red, worse) or right (green, better) out of the centre line.
+// Which role's numbers are on screen. Kept across re-renders (a language
+// switch re-renders everything) so switching language does not throw the
+// player back to their main role.
+let shownRole = null;
+
+function renderChipsFor(entry) {
+  $('chips').innerHTML = entry.gaps.map(g => patternRow({
+    label: tMetric(g.key),
+    num: `${fmtMetric(g.key, g.player)} → ${fmtMetric(g.key, g.target)}`,
+    title: `${t('target')} ${fmtMetric(g.key, g.target)}`,
+    shown: -g.gap,
+    better: g.gap <= 0,
+  })).join('');
+}
+
+function renderRoleTabs(s, data) {
+  const roles = s.roles || [];
+  // Fall back to the old single-role render if the server predates per-role data.
+  if (!roles.length) {
+    renderChipsFor({ gaps: data.weaknesses.gaps });
+    $('roleTabs').innerHTML = '';
+    $('roleScope').hidden = true;
+    return;
+  }
+  if (!roles.some(r => r.role === shownRole)) shownRole = s.mainRole;
+
+  $('roleTabs').innerHTML = roles.map(r =>
+    `<button type="button" class="role-tab${r.role === shownRole ? ' on' : ''}" data-role="${r.role}">` +
+    `${escapeHtml(tRole(r.role))} <span class="role-tab-n">${r.games}</span></button>`
+  ).join('');
+
+  const show = () => {
+    const entry = roles.find(r => r.role === shownRole) || roles[0];
+    renderChipsFor(entry);
+    // Say what these numbers are built from — and, when the sample is thin,
+    // that they are a first impression rather than a verdict.
+    const others = roles.filter(r => r.role !== entry.role).reduce((a, r) => a + r.games, 0);
+    const line = t('roleScope')
+      .replace('{role}', tRole(entry.role))
+      .replace('{games}', entry.games)
+      .replace('{left}', others);
+    const thin = entry.confident ? '' : ' ' + t('roleThin').replace('{games}', entry.games);
+    $('roleScope').textContent = line + thin;
+    $('roleScope').classList.toggle('thin', !entry.confident);
+    $('roleScope').hidden = false;
+    for (const b of $('roleTabs').querySelectorAll('.role-tab')) {
+      b.classList.toggle('on', b.dataset.role === shownRole);
+    }
+  };
+
+  $('roleTabs').onclick = e => {
+    const b = e.target.closest('.role-tab');
+    if (!b) return;
+    shownRole = b.dataset.role;
+    show();
+  };
+  show();
+}
+
 function patternRow({ label, num, title, shown, better }) {
   const cls = better ? 'good' : 'bad';
   const width = Math.min(Math.abs(shown) * 100, 50); // half the track = 50% off
@@ -144,12 +203,9 @@ function render(data) {
     $('progressBox').hidden = true;
   }
 
-  if (s.roleMixed) {
-    $('roleNote').hidden = false;
-    $('roleNote').textContent = t('roleMixed');
-  } else {
-    $('roleNote').hidden = true;
-  }
+  // The old "numbers are blended across roles" warning is gone: they are not
+  // blended any more. Each role's sample is stated under its own tab instead.
+  $('roleNote').hidden = true;
   if (s.queueScope === 'any') {
     $('roleNote').hidden = false;
     $('roleNote').textContent = t('noRanked');
@@ -157,13 +213,10 @@ function render(data) {
 
   // Personal patterns: distance from the benchmark for the player's rank.
   // g.gap is positive when the player is behind it, so flip it for display.
-  $('chips').innerHTML = data.weaknesses.gaps.map(g => patternRow({
-    label: tMetric(g.key),
-    num: `${fmtMetric(g.key, g.player)} → ${fmtMetric(g.key, g.target)}`,
-    title: `${t('target')} ${fmtMetric(g.key, g.target)}`,
-    shown: -g.gap,
-    better: g.gap <= 0,
-  })).join('');
+  // One tab per role actually played. Every role is measured against its OWN
+  // benchmarks, so a flex player can see each half of their play honestly
+  // instead of one blended number that describes neither.
+  renderRoleTabs(s, data);
 
   // Coaching text — localize the offline template; LLM output is already localized.
   const coachText = data.weaknesses.coachSource === 'template'

@@ -161,7 +161,7 @@ export function languageRule(lang) {
       `uses:\n${LANG_TERMS[lang]}` : '');
 }
 
-function buildPrompt({ rank, role, bucket, roleMixed, weaknesses, lang, progress }) {
+function buildPrompt({ rank, role, bucket, roleMixed, weaknesses, lang, progress, roleSample }) {
   const system =
     'You are a friendly, direct League of Legends coach. You know THIS player from their ' +
     'own recent games — never give generic tier-list advice. No filler. Speak to them directly ("you").\n' +
@@ -195,9 +195,23 @@ function buildPrompt({ rank, role, bucket, roleMixed, weaknesses, lang, progress
     FORMAT_RULE + languageRule(lang);
 
   const rankStr = rank ? `${rank.tier} ${rank.rank} (${bucket}-elo benchmarks)` : `unranked (${bucket}-elo benchmarks)`;
-  const mixNote = roleMixed
-    ? '\nNote: they play multiple roles, so numbers are blended across roles — acknowledge this if relevant.'
-    : '';
+  // The numbers are no longer blended across roles — they come from this role's
+  // games only — so what the coach needs to know is how MANY games that was,
+  // and whether that is enough to state a weakness as fact.
+  let mixNote = '';
+  if (roleSample) {
+    const others = (roleSample.breakdown || []).filter(b => b.role !== roleSample.role);
+    mixNote = `\nThese numbers come from their ${roleSample.games} ${roleSample.role} games only` +
+      (others.length
+        ? `; ${others.map(o => `${o.games} ${o.role}`).join(' and ')} left out of the same 20.`
+        : '.');
+    if (!roleSample.confident) {
+      mixNote += ' That is a SMALL sample. Say so plainly in one clause of the first paragraph, and ' +
+        'write the fixes as what to watch for next games rather than as settled facts about their play.';
+    }
+  } else if (roleMixed) {
+    mixNote = '\nNote: they play multiple roles — acknowledge this if relevant.';
+  }
 
   // Trends vs their own previous sessions — the coach should react to them
   // (praise real improvement once, focus the fixes on what is NOT moving).

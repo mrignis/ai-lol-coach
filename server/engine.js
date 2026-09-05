@@ -20,11 +20,39 @@ export function mainRole(games) {
   return { role: sorted[0]?.[0] || 'MIDDLE', gamesInRole: sorted[0]?.[1] || 0, spread: sorted };
 }
 
-// Average the per-game metrics.
-// NOTE (role-mixing): v0.1 averages across every role the player queued.
-// A player who flexes top+support has both pools blended into one number,
-// which dilutes the signal. v0.2 should segment metrics by role. Benchmarks
-// here are keyed to the player's MAIN role only — flagged for the coach text.
+// Below this many games in a role, the average is not worth a weakness claim —
+// one bad game moves it too far. The coach is told to say so rather than
+// pretending the number is solid.
+export const MIN_GAMES_FOR_CONFIDENCE = 5;
+
+// Metrics for ONE role, from that role's games only.
+//
+// Blending every role into one average and then judging it against a single
+// role's benchmarks produced nonsense in both directions: on a real account of
+// 17 support games plus one jungle and one bottom, CS/min came out at 1.98
+// against the true support figure of 1.53 — 29% inflation from two off-role
+// games — and the coach read that as a support farming far above expectation.
+// Vision moved the other way. So each role is now averaged on its own.
+export function aggregateByRole(games, role) {
+  return aggregate(games.filter(g => !g.remake && g.role === role));
+}
+
+// Games per role, most-played first, so the UI can show what was actually
+// analysed and what was set aside.
+export function roleBreakdown(games) {
+  const counts = {};
+  for (const g of games) {
+    if (g.remake || !g.role || g.role === 'UNKNOWN') continue;
+    counts[g.role] = (counts[g.role] || 0) + 1;
+  }
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([role, games]) => ({ role, games }));
+}
+
+// Average the per-game metrics of whatever games it is given. Callers pass a
+// single role's games (see aggregateByRole) — handing it a mixed set is what
+// caused the bug above.
 export function aggregate(games) {
   const played = games.filter(g => !g.remake);
   const n = played.length;

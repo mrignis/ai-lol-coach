@@ -1,7 +1,8 @@
 import { getAccount, getRank, getMatchIds, getMatches, extractParticipant } from './riot.js';
-import { aggregate, rankGaps, topWeaknesses, tierBucket, mainRole } from './engine.js';
+import { aggregate, aggregateByRole, roleBreakdown, rankGaps, topWeaknesses, tierBucket, mainRole,
+         MIN_GAMES_FOR_CONFIDENCE } from './engine.js';
 import { coach } from './llm.js';
-import { loadAnalyses, appendAnalysis, computeTrends } from './history.js';
+import { loadAnalyses, appendAnalysis, computeTrends, METRICS_BASIS } from './history.js';
 
 // Parse "gameName#tagLine" (tag optional-ish; default region tag hint not applied).
 // Zero-width and bidi control characters ride along when a Riot ID is copied
@@ -46,9 +47,45 @@ export async function analyzePlayer(riotId, platform, { onProgress, lang } = {})
   const bucket = tierBucket(rank?.tier);
   const roleMixed = gamesInRole < played.length * 0.7;
 
-  const metrics = aggregate(games);
+  // Each role is averaged on its own. Blending them and then judging the result
+  // against a single role's benchmarks made a 17-support account read as farming
+  // 29% above a support's target — the two off-role games it also counted were a
+  // jungle and a bottom lane.
+  //
+  // EVERY role gets its own reading, not just the main one — dropping the other
+  // roles would silently discard whole sessions from a player who flexes. The
+  // numbers and gaps are computed locally, so covering all of them is free; only
+  // the written coaching costs an LLM call, and that stays on the main role.
+  const breakdown = roleBreakdown(games);
+  const roles = breakdown.map(({ role: r, games: n }) => {
+    const m = aggregateByRole(games, r);
+    return {
+      role: r,
+      games: n,
+      // Below this, one bad game moves the average too far to call it a weakness.
+      confident: n >= MIN_GAMES_FOR_CONFIDENCE,
+      metrics: {
+        csPerMin: m.csPerMin, visPerMin: m.visPerMin, kp: m.kp,
+        deaths: m.deaths, goldPerMin: m.goldPerMin, dmgPerMin: m.dmgPerMin,
+        consistency: m._consistency,
+      },
+      gaps: topWeaknesses(rankGaps(m, r, bucket), 3),
+    };
+  });
+
+  const roleGames = played.filter(g => g.role === role);
+  const metrics = aggregateByRole(games, role);
   const gaps = rankGaps(metrics, role, bucket);
   const weaknesses = topWeaknesses(gaps, 3);
+  // How much the main-role reading is worth. Below the threshold the coach is
+  // told to say the sample is thin instead of stating a weakness as fact.
+  const roleSample = {
+    role,
+    games: roleGames.length,
+    ofTotal: played.length,
+    confident: roleGames.length >= MIN_GAMES_FOR_CONFIDENCE,
+    breakdown,
+  };
 
   // Top champions by games played (with per-champ win count).
   const champCounts = {};
@@ -68,13 +105,16 @@ export async function analyzePlayer(riotId, platform, { onProgress, lang } = {})
   const history = await loadAnalyses(playerId);
   const progress = computeTrends(history, metricsPlain);
 
-  const coaching = await coach({ rank, role, bucket, roleMixed, weaknesses, lang, progress });
+  const coaching = await coach({ rank, role, bucket, roleMixed, weaknesses, lang, progress, roleSample });
 
   await appendAnalysis(playerId, {
     date: new Date().toISOString(),
     rank: rank ? `${rank.tier} ${rank.rank}` : null,
     winRate: played.length ? wins / played.length : 0,
     mainRole: role,
+    // How these numbers were measured. Trends only compare like with like.
+    basis: METRICS_BASIS,
+    roleGames: roleGames.length,
     metrics: metricsPlain,
     weaknesses: weaknesses.map(w => w.key),
   });
@@ -88,6 +128,8 @@ export async function analyzePlayer(riotId, platform, { onProgress, lang } = {})
       mainRole: role,
       roleMixed,
       roleSpread: spread,
+      roleSample,
+      roles,
       mainChamps,
       gamesAnalyzed: played.length,
       wins,
