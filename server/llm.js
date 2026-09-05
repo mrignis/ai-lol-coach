@@ -629,6 +629,35 @@ const COACH_SYSTEM = (phase, lang, role, champBrief = '') => {
     FORMAT_RULE + shortLanguageRule(lang);
 };
 
+// Faults worth spending a second call to fix. Both are things the prompt
+// already forbids and the model still does occasionally — checking the text is
+// cheaper than trusting a rule, and it catches new phrasings of the same
+// mistake rather than only the ones already seen.
+const TRINKETS = /\b(Oracle Lens|Farsight Alteration|Stealth Ward|Warding Totem)\b/i;
+export function tipFault(text, myChampion) {
+  if (!text) return null;
+  // Your own champion named at you: "save Zyra's roots" said to the Zyra player.
+  // There is no sentence where the coach needs that name — it is always "your".
+  if (myChampion && new RegExp(`\\b${myChampion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text)) {
+    return {
+      why: `named the player's own champion (${myChampion})`,
+      instruction: `REWRITE: you wrote "${myChampion}" while talking TO the person playing ` +
+        `${myChampion}. Their own champion, abilities and items are "you" and "your" — say the ` +
+        'same thing again without that name anywhere in it.',
+    };
+  }
+  // A trinket is something you use, never a place. The glossary says so and it
+  // still produced "clear the river Oracle Lens".
+  if (TRINKETS.test(text)) {
+    return {
+      why: 'used a trinket name in the sentence',
+      instruction: 'REWRITE: trinket names do not belong in the sentence. Say what to DO — ' +
+        'clear the wards, place a ward — without naming the trinket item at all.',
+    };
+  }
+  return null;
+}
+
 export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang, recentTips = [], overused = [] }) {
   const phase = ctx?.phase || 'mid';
   const system = COACH_SYSTEM(phase, lang, role, ctx?.champBrief || '');
@@ -669,7 +698,21 @@ export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang, recent
     // reason the post-game coach still asks for 'medium' — but a slightly
     // rougher sentence beats no sentence, and the extra headroom leaves room
     // for the visible answer.
-    const r = await callLLM(system, user, { effort: 'low', maxTokens: 1400, openaiMaxTokens: 4000 });
+    const opts = { effort: 'low', maxTokens: 1400, openaiMaxTokens: 4000 };
+    let r = await callLLM(system, user, opts);
+    // Two rules keep leaking a few percent of the time no matter how firmly the
+    // prompt states them, so the output is checked rather than trusted: one
+    // recorded game wrote "ульту Zyra" to the person playing Zyra four times in
+    // 76 tips, and put the sweeper trinket in a river once. Naming the exact
+    // fault back to the model fixes it far more reliably than another rule
+    // would, and it only costs a second call on the few tips that trip it.
+    const fault = tipFault(r?.text, me?.champion);
+    if (fault) {
+      console.warn('[llm] regenerating tip —', fault.why);
+      const retry = await callLLM(system, user + '\n\n' + fault.instruction, opts);
+      if (retry?.text && !tipFault(retry.text, me?.champion)) r = retry;
+      else if (retry?.text) r = retry; // still imperfect, but fresher than nothing
+    }
     if (r?.text) return { tip: r.text.trim(), source: r.provider };
     why = 'empty_response';
   } catch (e) {
