@@ -647,7 +647,18 @@ const COACH_SYSTEM = (phase, lang, role, champBrief = '') => {
 // already forbids and the model still does occasionally — checking the text is
 // cheaper than trusting a rule, and it catches new phrasings of the same
 // mistake rather than only the ones already seen.
-const TRINKETS = /\b(Oracle Lens|Farsight Alteration|Stealth Ward|Warding Totem)\b/i;
+// A trinket NAME is not the problem — "Shaco has Oracle Lens and Umbral Glaive"
+// is exactly the enemy-build read doing its job, and banning the name outright
+// made this guard regenerate good advice. The fault is the trinket used as a
+// PLACE: "яма Oracle Lens", "почисти річку Oracle Lens". So it only fires when
+// the name sits directly against a location or a vision noun.
+const TRINKET = '(?:Oracle Lens|Farsight Alteration|Stealth Ward|Warding Totem)';
+// \w is ASCII-only in JavaScript, so "річк\w*" stops before the case ending and
+// never matches "річку" — \p{L} with the u flag is what actually reads Cyrillic.
+const E = '[\\p{L}]*';
+const PLACE = `(?:річк${E}|ям${E}|ліс${E}|ліні${E}|мід${E}|баз${E}|барон${E}|дракон${E}|кущ${E})`;
+const TRINKET_AS_PLACE = new RegExp(
+  `${PLACE}\\s+${TRINKET}|${TRINKET}\\s+(?:${PLACE}|огляд${E}|варди|підхід${E}|вхід${E})`, 'iu');
 export function tipFault(text, myChampion) {
   if (!text) return null;
   // Your own champion named at you: "save Zyra's roots" said to the Zyra player.
@@ -660,13 +671,13 @@ export function tipFault(text, myChampion) {
         'same thing again without that name anywhere in it.',
     };
   }
-  // A trinket is something you use, never a place. The glossary says so and it
-  // still produced "clear the river Oracle Lens".
-  if (TRINKETS.test(text)) {
+  // A trinket is something you use, never a place.
+  if (TRINKET_AS_PLACE.test(text)) {
     return {
-      why: 'used a trinket name in the sentence',
-      instruction: 'REWRITE: trinket names do not belong in the sentence. Say what to DO — ' +
-        'clear the wards, place a ward — without naming the trinket item at all.',
+      why: 'used a trinket name as a place',
+      instruction: 'REWRITE: you attached a trinket name to a location. A trinket is an item in ' +
+        'your inventory, not a part of the map. Say what to DO — clear the wards there, place a ' +
+        'ward — and name the place by its own name. Naming an ENEMY item as a threat is fine.',
     };
   }
   return null;
