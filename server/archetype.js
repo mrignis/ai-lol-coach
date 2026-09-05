@@ -72,6 +72,18 @@ const BRIEFS = {
     'CHAMPION ROLE — MARKSMAN. They are the sustained damage and the most killable player in a ' +
     'fight. They never initiate. Coach positioning last into a fight, what to hit when the front ' +
     'line is in the way, and when to take a sidelane instead of grouping.',
+  // Off-meta picks (a Teemo or a Ziggs on support, a mage in the jungle) reach
+  // these. They say only what the POSITION guarantees, and leave the fight plan
+  // to the model, which can read the champion's actual items and abilities.
+  support:
+    'CHAMPION ROLE — SUPPORT, and an unusual pick for it, so do not assume the standard job. Work ' +
+    'out from their items and abilities whether this champion starts fights, protects the carry, ' +
+    'or zones from range, and coach that. What holds regardless: they do not take farm from the ' +
+    'carry, vision is theirs to control, and being alive at the objective matters more than kills.',
+  jungle:
+    'CHAMPION ROLE — JUNGLER, and an unusual pick for it, so do not assume a standard clear. What ' +
+    'holds regardless: they decide where the next fight happens, so always name a destination — a ' +
+    'lane, a camp side, or an objective — and they set up objectives before they spawn.',
 };
 
 /**
@@ -97,11 +109,20 @@ export function championBrief(champion, position, champs) {
   }
   if (position === 'TOP' && SPLIT_PUSHER.test(name)) return BRIEFS.splitPusher;
   if (position === 'BOTTOM') return BRIEFS.marksman;
+
+  // Off-meta picks land here, and the tag fallback below must never see them:
+  // Data Dragon files Teemo as Marksman/Mage, so a Teemo SUPPORT was handed the
+  // marksman brief — "you are the damage, you never initiate, take a sidelane
+  // instead of grouping" — which is ADC advice given to a support. Position
+  // wins over tags whenever the position itself defines the job.
+  if (position === 'UTILITY') return BRIEFS.support;
+  if (position === 'JUNGLE') return BRIEFS.jungle;
+
   if (ASSASSIN.test(name)) return BRIEFS.assassin;
   if (CONTROL_MAGE.test(name)) return BRIEFS.controlMage;
 
-  // Nothing curated — fall back to Data Dragon's tags, which are coarse but
-  // still better than treating every champion in a position the same way.
+  // Nothing curated and no position to go on — Data Dragon's tags are coarse
+  // but still better than treating every champion the same way.
   const tags = champs?.[name]?.tags || [];
   if (tags.includes('Marksman')) return BRIEFS.marksman;
   if (tags.includes('Assassin')) return BRIEFS.assassin;
