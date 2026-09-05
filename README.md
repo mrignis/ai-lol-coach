@@ -16,23 +16,81 @@ overlay with live nudges and AI advice based on the actual state of the match.
 
 ## Install
 
-**Option A — installer (recommended)**
+Windows 10/11 and [Node.js 20+](https://nodejs.org) (the LTS installer, default
+options). Check it is there:
 
-1. Download / build `AI LoL Coach Setup 0.1.0.exe` (see *Build* below).
-2. Run it. The app installs per-user (no admin rights needed).
-3. Launch **AI LoL Coach** from the Start menu.
+```bash
+node --version
+```
 
-**Option B — from source**
+**Step 1 — get the code**
 
 ```bash
 git clone https://github.com/mrignis/ai-lol-coach
 cd ai-lol-coach
 npm install
-npm start          # launches the Electron app (server runs inside it)
 ```
 
-On Windows you can also double-click **`AI LoL Coach.vbs`** — same thing, but
-without the console window `npm` would open.
+**Step 2 — run it**
+
+```bash
+npm start
+```
+
+That opens the launcher; the server runs inside it, so there is no second
+window and nothing else to start. On Windows you can instead double-click
+**`AI LoL Coach.vbs`**, which is the same thing without the console window that
+`npm` leaves open.
+
+**Step 3 — first use**
+
+Type your Riot ID the way the client shows it — `Name#TAG`, tag included — pick
+your region, and press **Analyze**. Then just launch League: the overlay appears
+by itself once you are in a game, and lives in the system tray between matches.
+
+### Prefer a real installer?
+
+```bash
+npm run dist
+```
+
+builds `dist/AI LoL Coach Setup <version>.exe`, which installs per-user with no
+admin rights. There is deliberately **no public download here**: the installer
+embeds a shared token for the hosted backend, so publishing it would hand that
+token — and the API quota behind it — to anyone on the internet. Build your own
+with the command above, or ask the author for a copy.
+
+### Want to use your own AI instead?
+
+The shared backend is a convenience, not a requirement — you can run the coach
+entirely on your own account. Create a `.env` next to `package.json` (or edit
+`%APPDATA%\lol-coach\.env` for the installed app) with **one** of these:
+
+```ini
+# Paid, no daily ceiling — what this project is developed against
+OPENAI_API_KEY=sk-...
+
+# Free tier, ~200k tokens/day: roughly one game before it runs out
+GROQ_API_KEY=gsk_...
+```
+
+Restart the app and it uses your key. You do not need a second setting: a key
+that is present is taken as your choice of provider, and requests go straight
+to that service rather than through anyone else's backend. Add `LLM_PROVIDER=`
+only if you have several keys and want a specific one to lead.
+
+The same applies to Riot: set `RIOT_API_KEY=` from
+[developer.riotgames.com](https://developer.riotgames.com) to look up matches
+through your own account. Note that a personal development key expires every
+24 hours unless you have applied for a permanent one.
+
+### If something does not work
+
+| Symptom | Cause |
+|---|---|
+| "Player not found" on a Riot ID you are sure of | The tag is missing, or invisible characters came along when you pasted it — retype it by hand |
+| Launcher opens but analysis fails | No backend reachable — see **API keys** below |
+| Overlay never appears in game | Run League in Borderless or Windowed, not Exclusive Fullscreen |
 
 ---
 

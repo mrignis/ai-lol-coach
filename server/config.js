@@ -41,7 +41,13 @@ export const config = {
   llm: {
     // groq | gemini | none. Ollama and Anthropic were removed 2026-07-19:
     // the Ollama cloud model was retired (410) and Anthropic never had a key.
-    provider: (process.env.LLM_PROVIDER || 'groq').toLowerCase(),
+    // Bringing your own key is the same thing as choosing that provider, so it
+    // is picked up without a second setting. Without this, someone who pasted
+    // an OPENAI_API_KEY into the installed app still got the shared Groq
+    // backend first and their own key only as a fallback — the opposite of what
+    // pasting a key means. An explicit LLM_PROVIDER always wins.
+    provider: (process.env.LLM_PROVIDER
+      || (process.env.OPENAI_API_KEY ? 'openai' : 'groq')).toLowerCase(),
     groqKey: process.env.GROQ_API_KEY || '',
     // gpt-oss-120b: smartest text model on Groq's free tier (Kimi K2 and
     // Llama-4 were removed from their catalog, 2026-07).
