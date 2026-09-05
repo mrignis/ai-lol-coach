@@ -11,6 +11,7 @@ import { getNews } from './news.js';
 import { getChampions } from './ddragon.js';
 import { getAccount, getRank } from './riot.js';
 import { leaderboard, TIERS, DIVISIONS, QUEUES } from './leaderboard.js';
+import { observeLive, observeTip, listRecordings, readRecording, recordingsDir } from './recorder.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -95,9 +96,17 @@ app.get('/api/live', async (req, res) => {
   const bucket = ['low', 'mid', 'high'].includes(req.query.bucket) ? req.query.bucket : 'mid';
   try {
     const data = await fetchLiveData();
-    res.json(await buildLiveResponse(data, bucket));
+    const payload = await buildLiveResponse(data, bucket);
+    // The app records its own play sessions now — see recorder.js. Driven off
+    // this poll, so there is no second process to start and nothing an update
+    // can silently kill.
+    observeLive(payload);
+    res.json(payload);
   } catch (e) {
-    if (e.code === 'NOGAME') return res.json({ inGame: false });
+    if (e.code === 'NOGAME') {
+      observeLive({ inGame: false });
+      return res.json({ inGame: false });
+    }
     console.error('[live]', e.message);
     res.json({ inGame: false, error: 'live_read_failed' });
   }
@@ -122,6 +131,7 @@ const tipLog = [];
 function recordTip(entry) {
   tipLog.push({ at: Date.now(), ...entry });
   if (tipLog.length > 200) tipLog.shift();
+  observeTip(entry); // also lands in the on-disk session recording
 }
 let lastCoachLang = 'en'; // vision calls happen out-of-band, so remember the UI language
 let lastGameTime = 0;     // detects a new game so tip history does not leak across matches
@@ -131,6 +141,16 @@ let lastLoggedVisionTs = 0; // one log line per screenshot tip, not per poll tha
 app.get('/api/tips-log', (req, res) => {
   const since = Number(req.query.since) || 0;
   res.json({ tips: tipLog.filter(t => t.at > since) });
+});
+
+// Session recordings the app wrote itself. Listing is free; reading returns one
+// file verbatim so a play-test can be reviewed without a second process.
+app.get('/api/recordings', (req, res) => {
+  const file = req.query.file ? String(req.query.file) : null;
+  if (!file) return res.json({ dir: recordingsDir, games: listRecordings() });
+  const body = readRecording(file);
+  if (body == null) return res.status(404).json({ error: 'not_found' });
+  res.type('text/plain').send(body);
 });
 
 app.get('/api/live-coach', async (req, res) => {
