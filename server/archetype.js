@@ -123,10 +123,20 @@ export function championBrief(champion, position, champs) {
 
   // Nothing curated and no position to go on — Data Dragon's tags are coarse
   // but still better than treating every champion the same way.
+  //
+  // Riot lists the PRIMARY class first, and that ordering is the whole answer
+  // for dual-tagged champions. Testing tags in a fixed order of my own made
+  // Malphite a control mage, because he is ["Tank","Mage"] and Mage was checked
+  // first — the same would have hit Amumu, Galio and Cho'Gath, who are tanks
+  // that happen to deal magic damage.
   const tags = champs?.[name]?.tags || [];
-  if (tags.includes('Marksman')) return BRIEFS.marksman;
-  if (tags.includes('Assassin')) return BRIEFS.assassin;
-  if (tags.includes('Mage')) return BRIEFS.controlMage;
-  if (tags.includes('Tank')) return BRIEFS.objectiveTank;
+  const byTag = {
+    Marksman: BRIEFS.marksman,
+    Assassin: BRIEFS.assassin,
+    Mage: BRIEFS.controlMage,
+    Tank: BRIEFS.objectiveTank,
+    Fighter: BRIEFS.objectiveTank,
+  };
+  for (const tag of tags) if (byTag[tag]) return byTag[tag];
   return '';
 }
