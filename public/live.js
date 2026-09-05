@@ -123,7 +123,15 @@ async function loadAiTip(force = false) {
   } catch { /* best-effort */ }
 }
 
-// Keep a short history — one line at a time felt like "too few tips".
+// Overlay mode is decided at load and read from several places below.
+const IS_OVERLAY = new URLSearchParams(location.search).get('overlay') === '1';
+
+// A short history was added because one line at a time felt like "too few
+// tips" — but that was the launcher page, where there is room to spare. Over
+// the game the same three lines are three times the rectangle sitting on top
+// of the match, and the two older ones are advice that has already expired.
+// So: only the current tip on the overlay, history where it costs nothing.
+const AI_KEEP = IS_OVERLAY ? 1 : 3;
 let aiHistory = [];
 
 function renderAiTip() {
@@ -133,7 +141,7 @@ function renderAiTip() {
   const text = lastAi.tip || tNudge(lastAi.code, lastAi.params);
   if (!aiHistory.length || aiHistory[0].text !== text) {
     aiHistory.unshift({ text, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
-    aiHistory = aiHistory.slice(0, 3);
+    aiHistory = aiHistory.slice(0, AI_KEEP);
   }
   $('aiTip').innerHTML = aiHistory.map((h, i) =>
     `<div class="ai-item${i ? ' ai-old' : ''}"><span class="ai-at">${h.at}</span>${escapeHtml(h.text)}</div>`
@@ -161,7 +169,7 @@ function applyOpts() {
   localStorage.setItem(OV_KEY, JSON.stringify(ovOpts));
 }
 
-if (new URLSearchParams(location.search).get('overlay') === '1') {
+if (IS_OVERLAY) {
   document.body.classList.add('overlay');
   $('ovBar').hidden = false;
   $('ovClose').addEventListener('click', () => window.close());
