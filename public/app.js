@@ -383,6 +383,7 @@ let lastMeta = null;
 async function loadMeta() {
   try {
     lastMeta = await (await fetch('/api/meta-picks?lang=' + getLang())).json();
+    lastMeta._seen = Date.now();
     renderMeta();
   } catch { /* best-effort, like the news card */ }
 }
@@ -390,10 +391,18 @@ function renderMeta() {
   const m = lastMeta;
   if (!m || !m.roles || !m.roles.length) { $('meta').hidden = true; return; }
   $('metaPatch').textContent = m.patch ? String(m.patch) : '';
+  // The server resolves each name to its Data Dragon id, because the portrait
+  // filename is not the display name — Kai'Sa is Kaisa.png. A champion whose id
+  // did not resolve falls back to a plain text chip rather than a broken image.
+  const portrait = c => (c.id
+    ? `<img class="mc-img" loading="lazy" src="${champIcon(c.id)}" alt="">`
+    : '');
   $('metaBody').innerHTML = m.roles.map(r =>
     `<div class="meta-role"><span class="mr-role">${escapeHtml(tRole(r.role))}</span>` +
     `<span class="mr-champs">${r.champions.map(c =>
-      `<a class="meta-champ" href="/builds.html?champ=${encodeURIComponent(c)}&role=${encodeURIComponent(r.role)}">${escapeHtml(c)}</a>`
+      `<a class="meta-champ${c.id ? ' has-img' : ''}" title="${escapeHtml(c.name)}" ` +
+      `href="/builds.html?champ=${encodeURIComponent(c.name)}&role=${encodeURIComponent(r.role)}">` +
+      `${portrait(c)}<span>${escapeHtml(c.name)}</span></a>`
     ).join('')}</span></div>`
   ).join('');
   $('meta').hidden = false;
@@ -471,6 +480,15 @@ renderSaved();
 loadRegions();
 loadNews();
 loadMeta();
+// The app lives in the tray for days at a time, so the home page has to notice
+// a new patch without being restarted. The server caches per patch, so these
+// calls cost nothing until the patch number actually changes.
+const META_REFRESH_MS = 30 * 60 * 1000;
+setInterval(() => { loadNews(); loadMeta(); }, META_REFRESH_MS);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden || !lastMeta) return;
+  if (Date.now() - (lastMeta._seen || 0) > META_REFRESH_MS) { loadNews(); loadMeta(); }
+});
 checkKeys();
 pollAppStatus();
 setInterval(pollAppStatus, 5000);

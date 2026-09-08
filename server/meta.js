@@ -1,6 +1,7 @@
 import * as cache from './cache.js';
 import { currentPatch } from './news.js';
 import { groundedAnswer, languageRule } from './llm.js';
+import { getChampions } from './ddragon.js';
 
 // Pre-game matchup briefing: the bot "reads the guides" for the player.
 // Google-search-grounded so it reflects the CURRENT patch, then cached per
@@ -57,9 +58,13 @@ export async function matchupBrief({ champ, vs, role, lang = 'en' }) {
 // UI links each one straight into the build lookup.
 export async function metaPicks({ lang = 'en' } = {}) {
   const patch = await currentPatch();
-  const key = `metapicks_${patch}_${lang}`;
+  // v2: champions went from plain strings to {name, id} so each can carry a
+  // portrait. A cache entry in the old shape rendered a row of "undefined",
+  // and clearing caches by hand does not reach an installed copy — the key
+  // carries the shape version so stale data simply cannot be read.
+  const key = `metapicks2_${patch}_${lang}`;
   const hit = await cache.get(key);
-  if (hit && hit.roles?.length) return hit;
+  if (hit && hit.roles?.length) return withPortraits(hit);
 
   const system =
     'You are reporting the current League of Legends solo-queue meta. Use web search — pick and win ' +
@@ -91,11 +96,35 @@ export async function metaPicks({ lang = 'en' } = {}) {
     const champs = m[2].split(',').map(s => s.trim()).filter(Boolean).slice(0, 3);
     if (champs.length) roles.push({ role, champions: champs });
   }
+
+
   roles.sort((a, b) => ROLES.indexOf(a.role) - ROLES.indexOf(b.role));
 
   const out = { patch, roles, source: r.source, _ts: Date.now() };
   // Only cache a web-grounded answer. Without search the model reports the meta
   // of whenever it was trained, which would then be pinned for the whole patch.
   if (roles.length === 5 && r.source === 'gemini-search') await cache.set(key, out);
-  return out;
+  return withPortraits(out);
+}
+
+// Names are cached; portrait ids are not, and are resolved fresh every time.
+//
+// The id is derived data with a different lifetime from the picks: an app build
+// whose champion map predated the id field wrote a whole patch's worth of
+// `id: null` into the cache, and every later build faithfully served those
+// nulls. Deriving on the way OUT means a stale cache can hold stale names —
+// which is the point of caching them — but never a stale mapping.
+async function withPortraits(picks) {
+  let dd = {};
+  try { dd = await getChampions(); } catch { /* no portraits, names still work */ }
+  return {
+    ...picks,
+    roles: (picks.roles || []).map(r => ({
+      role: r.role,
+      champions: (r.champions || []).map(c => {
+        const name = typeof c === 'string' ? c : c.name;
+        return { name, id: dd[name]?.id || null };
+      }),
+    })),
+  };
 }

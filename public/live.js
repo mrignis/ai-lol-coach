@@ -53,8 +53,12 @@ function render(d) {
 
 
 // Matchup briefing — fetched once per game (server caches per patch anyway).
+// NOT over the game: it is build reference, the same material the Builds page
+// exists for, and reading a four-part plan is not something anyone does mid
+// fight. Folding it away was half a fix; the overlay simply does not carry it.
 let matchupLoadedFor = null;
 async function loadMatchup() {
+  if (IS_OVERLAY) return;
   try {
     const d = await (await fetch(`/api/matchup?lang=${getLang()}`)).json();
     if (d.ready && d.brief) {

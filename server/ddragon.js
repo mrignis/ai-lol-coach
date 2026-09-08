@@ -11,10 +11,10 @@ async function currentPatch() {
   return versions[0];
 }
 
-// → { "Ahri": { magic: 8, attack: 3, tags: ["Mage","Assassin"] }, ... }
+// → { "Ahri": { id: "Ahri", magic: 8, attack: 3, tags: ["Mage","Assassin"] }, ... }
 export async function getChampions() {
   if (memo && Date.now() - memo._ts < TTL) return memo.data;
-  const cached = await cache.get('ddragon_champs');
+  const cached = await cache.get('ddragon_champs_v2');
   if (cached && Date.now() - (cached._ts || 0) < TTL) {
     memo = cached;
     return cached.data;
@@ -24,10 +24,13 @@ export async function getChampions() {
   const data = {};
   for (const id in raw.data) {
     const c = raw.data[id];
-    data[c.name] = { magic: c.info?.magic ?? 5, attack: c.info?.attack ?? 5, tags: c.tags || [] };
+    // `id` is the portrait filename, which is NOT the display name:
+    // Kai'Sa is Kaisa, Wukong is MonkeyKing, Cho'Gath is Chogath. It was
+    // dropped here, so anything wanting an image had to guess.
+    data[c.name] = { id, magic: c.info?.magic ?? 5, attack: c.info?.attack ?? 5, tags: c.tags || [] };
   }
   memo = { data, _ts: Date.now() };
-  await cache.set('ddragon_champs', memo);
+  await cache.set('ddragon_champs_v2', memo);
   return data;
 }
 
