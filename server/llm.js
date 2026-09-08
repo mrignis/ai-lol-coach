@@ -868,8 +868,21 @@ export async function visionTip({ imageBase64, minimapBase64, me, gameTimeSec, r
   let lastErr = null;
   for (const [name, fn] of attempts) {
     try {
-      const text = await fn(args);
-      if (text) return plainText(text);
+      let text = await fn(args);
+      if (!text) continue;
+      // Screenshot tips go through the same output check as text ones. They did
+      // not until now, and it never showed: while vision ran on Gemini's spent
+      // free quota it produced about one tip a game. Moving it to OpenAI took
+      // that to twenty, and every fault in the next recorded game — "тримай
+      // оглушення Brand" to the Brand player, "почисти річку Oracle Lens" —
+      // came from this path, with the text path clean across 84 tips.
+      const fault = tipFault(text, me?.champion);
+      if (fault) {
+        console.warn('[llm] regenerating vision tip —', fault.why);
+        const retry = await fn({ ...args, user: args.user + '\n\n' + fault.instruction });
+        if (retry) text = retry;
+      }
+      return plainText(text);
     } catch (e) {
       lastErr = e;
       console.warn(`[llm] vision ${name} failed (${String(e.message).slice(0, 90)}) — trying next`);
