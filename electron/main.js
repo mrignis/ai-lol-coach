@@ -64,8 +64,11 @@ const SAFE_WEB_PREFS = {
 function createWindow() {
   const saved = loadBounds();
   win = new BrowserWindow({
-    width: saved?.width ?? 290,
-    height: saved?.height ?? 340,
+    // 260, down from 290. HUD guidance is to keep a companion overlay to a
+    // corner the game's own UI does not use; the stats row and the folded
+    // brief freed the width, so take it back rather than spend it.
+    width: saved?.width ?? 260,
+    height: saved?.height ?? 300,
     x: saved?.x ?? 24,
     y: saved?.y ?? 60,
     icon: ICON,

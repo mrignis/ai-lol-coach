@@ -53,8 +53,16 @@
     <div id="status" class="card status" data-i18n="waiting">Waiting for a game… launch League and load into a match.</div>
 
     <div id="widget" hidden>
+      <!-- Tertiary information: read once at champion select, then in the way
+           for the other 35 minutes. Collapsed by default over the game. -->
       <div class="card" id="cardMatchup" hidden>
-        <h3>📋 <span data-i18n="matchupTitle">Matchup brief</span> <span id="matchupVs" class="muted"></span></h3>
+        <h3>
+          <button type="button" id="matchupToggle" class="card-toggle" aria-expanded="true">
+            <span class="chev" aria-hidden="true">▾</span>
+            📋 <span data-i18n="matchupTitle">Matchup brief</span>
+          </button>
+          <span id="matchupVs" class="muted"></span>
+        </h3>
         <div id="matchupBody" class="ai-tip"></div>
       </div>
       <div class="card live-me" id="cardStats">

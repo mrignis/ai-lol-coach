@@ -24,18 +24,28 @@ function render(d) {
   const m = d.me;
   $('liveChamp').textContent = `${m.champion} · ${tRole(m.role)} · Lv ${m.level}`;
   $('liveTime').textContent = mmss(d.gameTimeSec);
-  $('liveStats').innerHTML = [
+  // Over the game these sit on one line, so the CS-per-minute parenthetical
+  // goes — it is the one figure here nobody acts on mid-fight, and it is what
+  // pushed the row to a second line. The full label stays in the tooltip.
+  const stats = [
     [t('statKDA'), `${m.kills}/${m.deaths}/${m.assists}`],
-    [t('statCS'), `${m.cs} (${m.csPerMin.toFixed(1)}/m)`],
+    [t('statCS'), IS_OVERLAY ? String(m.cs) : `${m.cs} (${m.csPerMin.toFixed(1)}/m)`],
     [t('statVision'), m.wardScore.toFixed(0)],
     [t('statGold'), m.gold],
-  ].map(([k, v]) => `<div class="live-stat"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+  ];
+  $('liveStats').innerHTML = stats
+    .map(([k, v]) => `<div class="live-stat" title="${escapeHtml(k)}">` +
+      `<span class="k">${escapeHtml(k)}</span><span class="v">${escapeHtml(String(v))}</span></div>`)
+    .join('');
 
   if (!d.nudges.length) {
     $('liveNudges').innerHTML = `<div class="nudge info">${escapeHtml(t('onTrack'))}</div>`;
   } else {
     // The server sends {code, params}; render them in the current language.
+    // Three stacked warnings over a live game is a wall — the third is always
+    // the least urgent, since the server already sorts them.
     $('liveNudges').innerHTML = d.nudges
+      .slice(0, IS_OVERLAY ? 2 : 3)
       .map(n => `<div class="nudge ${n.level}">${escapeHtml(n.text || tNudge(n.code, n.params))}</div>`)
       .join('');
   }
@@ -51,6 +61,7 @@ async function loadMatchup() {
       $('matchupVs').textContent = d.vs ? `${d.champ} vs ${d.vs}` : d.champ;
       $('matchupBody').textContent = d.brief;
       $('cardMatchup').hidden = false;
+      document.dispatchEvent(new Event('matchuploaded'));
     }
   } catch { /* best-effort */ }
 }
@@ -72,6 +83,7 @@ async function poll() {
     // 30s tip timer meant the advice often landed after the enemy respawned,
     // so a change in who is dead asks for a fresh tip immediately.
     if (deadSignature() !== prevDead) loadAiTip();
+    dropStaleTip();
     // First ready poll of a new game → pull the briefing for this champion.
     const gameKey = d.me.champion + ':' + getLang();
     if (matchupLoadedFor !== gameKey) {
@@ -141,8 +153,24 @@ const IS_OVERLAY = new URLSearchParams(location.search).get('overlay') === '1';
 const AI_KEEP = IS_OVERLAY ? 1 : 3;
 let aiHistory = [];
 
+// A tip is advice about a moment. Once that moment is several minutes gone it is
+// not just useless, it is a rectangle of stale text sitting over the game — and
+// the player has no way to tell it apart from a fresh one. If nothing has
+// replaced it in this long, clear it and give the space back.
+const TIP_STALE_MS = 150000;
+let lastTipShownAt = 0;
+
+function dropStaleTip() {
+  if (!IS_OVERLAY || !aiHistory.length) return;
+  if (Date.now() - lastTipShownAt < TIP_STALE_MS) return;
+  aiHistory = [];
+  lastAi = null;
+  $('aiTip').textContent = t('aiWait');
+}
+
 function renderAiTip() {
   if (!lastAi) return;
+  lastTipShownAt = Date.now();
   // `tip` is LLM prose (already written in the chosen language); when the LLM is
   // offline the server sends a `code` instead, which we localize here.
   const text = lastAi.tip || tNudge(lastAi.code, lastAi.params);
@@ -157,7 +185,10 @@ function renderAiTip() {
 
 // ── Overlay mode (?overlay=1): transparent, compact, user-configurable ──
 const OV_KEY = 'lolcoach_overlay_opts';
-const OV_DEFAULTS = { alpha: 85, scale: 100, stats: true, nudges: true, ai: true, pinned: false };
+// alpha 80, not 85: HUD guidance puts a readable overlay at 70-80% so the
+// game stays legible underneath. `brief` starts false — it is reference
+// material, not something to watch during a fight.
+const OV_DEFAULTS = { alpha: 80, scale: 100, stats: true, nudges: true, ai: true, pinned: false, brief: false };
 let ovOpts = (() => {
   try { return { ...OV_DEFAULTS, ...JSON.parse(localStorage.getItem(OV_KEY) || '{}') }; }
   catch { return { ...OV_DEFAULTS }; }
@@ -182,6 +213,24 @@ if (IS_OVERLAY) {
   $('ovClose').addEventListener('click', () => window.close());
   $('ovGear').addEventListener('click', () => { $('ovSettings').hidden = !$('ovSettings').hidden; });
   $('ovPin').addEventListener('click', () => { ovOpts.pinned = !ovOpts.pinned; applyOpts(); });
+
+  // The brief is worth reading once, at champion select. Folding it away is the
+  // difference between a widget that fits in a corner and one that does not,
+  // so the choice is remembered rather than reset every game.
+  const toggle = $('matchupToggle');
+  if (toggle) {
+    const applyMatchup = () => {
+      $('cardMatchup').classList.toggle('collapsed', !ovOpts.brief);
+      toggle.setAttribute('aria-expanded', String(!!ovOpts.brief));
+    };
+    toggle.addEventListener('click', () => {
+      ovOpts.brief = !ovOpts.brief;
+      localStorage.setItem(OV_KEY, JSON.stringify(ovOpts));
+      applyMatchup();
+    });
+    applyMatchup();
+    document.addEventListener('matchuploaded', applyMatchup);
+  }
 
   // Reuse the existing controls: dot goes to the title bar, rank picker into settings.
   $('ovDotSlot').appendChild($('dot'));
