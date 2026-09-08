@@ -82,6 +82,14 @@ const LANG_TERMS = {
     'ADC / bot carry = АДК (in Cyrillic, never "ADC"); support = сапорт; ultimate = ульта; dash = ривок',
     'inhibitor = інгібітор (NOT "інхібітор", NOT "інхіботор"); super minions = суперміньйони',
     'Baron buff = баф барона (NOT "баронський баф"); turret / tower = вежа; base = база; river = річка',
+    // Borrowed forms players actually use at the keyboard. These are correct —
+    // the rule against transliteration was over-applied and produced textbook
+    // phrasing no one says.
+    'Jungle buffs are named the way players say them: blue buff = блу баф, red buff = ред баф ' +
+      '("синій баф" / "червоний баф" are also fine). Dragon = дракон or дрейк, both natural.',
+    'Write a borrowed term FULLY in Cyrillic or not at all. "Baron-баф" and "Dragon-яма" are wrong ' +
+      'in both directions: either "баф барона" and "яма Барона", or leave the proper name alone as ' +
+      'its own Latin word. Never hyphenate the two alphabets together.',
     // Actual garbage this model has produced. Naming the exact mistake works
     // better than restating the rule it already broke.
     'NEVER write any of these, they are not Ukrainian words or are plain wrong: ' +
@@ -127,8 +135,17 @@ function shortLanguageRule(lang) {
   const langName = LANG_NAMES[lang];
   if (!lang || lang === 'en' || !langName) return '';
   return `\n\nLANGUAGE — write in natural ${langName}, informal singular, imperative ` +
-    '("Постав вард", never "Ставити вард"). Only champion, item and spell names stay in English. ' +
-    'No English words or abbreviations otherwise, no transliterated English, no invented words.' +
+    '("Постав вард", never "Ставити вард").\n' +
+    // "No transliterated English" was flatly wrong: half of what players say IS
+    // borrowed ("вард", "ульта", "баф", "блу баф"), and forbidding it produced
+    // stiff textbook prose nobody uses at the keyboard.
+    'PROPER NAMES — champions, items and summoner spells — stay exactly as the client spells them, ' +
+    'in Latin, as their own separate word. Never hyphenate one onto a local ending and never put a ' +
+    'Latin letter inside a local word.\n' +
+    'EVERYTHING ELSE goes in the local form a player would actually say out loud, including the ' +
+    'borrowed words they really use for jungle buffs, wards, abilities and objectives. Use the ' +
+    'borrowing only where it is what people say; where the language has its own ordinary word, use ' +
+    'that. Never invent one.' +
     (LANG_TERMS[lang] ? `\nTerms:\n${LANG_TERMS[lang]}` : '');
 }
 
@@ -153,8 +170,9 @@ export function languageRule(lang) {
     `- The stat labels in the data below are English: re-express each one as a ${langName} player would ` +
     'say it (an average per game, a rate per minute). Do not translate them word for word and never turn ' +
     'them into an abstract noun.\n' +
-    '- Do NOT transliterate an English word into the local alphabet to invent a term — a respelled ' +
-    'English word is still English. Do not clip or abbreviate words either; write them in full.\n' +
+    '- Respell an English word in the local alphabet ONLY where that spelling is already what players ' +
+    'say; do not mint a new one for a word the language already has. Do not clip or abbreviate ' +
+    'words either; write them in full.\n' +
     `- Do not invent words. If you are unsure of the ${langName} term, use plain everyday wording any ` +
     'player understands.' +
     (LANG_TERMS[lang] ? `\n- Use exactly these ${langName} terms, which is what the app's own interface ` +
@@ -686,6 +704,24 @@ export function tipFault(text, myChampion) {
       instruction: `REWRITE: you wrote "${myChampion}" while talking TO the person playing ` +
         `${myChampion}. Their own champion, abilities and items are "you" and "your" — say the ` +
         'same thing again without that name anywhere in it.',
+    };
+  }
+  // Latin fused to Cyrillic: "Baron-баф", "мідa" with a Latin a. Always wrong in
+  // Ukrainian and Russian, where a Latin word is set off by a space or not used.
+  //
+  // Deliberately Cyrillic-only rather than "any non-Latin script". Korean and
+  // Japanese attach particles straight onto a Latin word — "Oracle Lens로",
+  // "Settが" — and those are correct. A script check written the obvious way
+  // flags all three CJK languages and regenerates perfectly good advice, which
+  // is the mistake the trinket guard already made once.
+  const fused = text.match(/[A-Za-z]-?[Ѐ-ӿ]|[Ѐ-ӿ]-?[A-Za-z]/);
+  if (fused) {
+    return {
+      why: `fused Latin and Cyrillic ("${fused[0]}")`,
+      instruction: `REWRITE: you wrote "${fused[0]}", joining a Latin word to a Cyrillic one. ` +
+        'Champion and item names stay in Latin as their own word, separated by a space — never ' +
+        'hyphenated onto a Cyrillic ending and never with a Latin letter inside a Cyrillic word. ' +
+        'Say the same thing again with that fixed.',
     };
   }
   // A trinket is something you use, never a place.
