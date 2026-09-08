@@ -1,5 +1,20 @@
 
 
+// Deep link from the home page's "strong this patch" card: a champion chip
+// there is a shortcut into this lookup, so arriving with ?champ= fills the form
+// and runs it rather than making the player retype what they just clicked.
+function applyDeepLink() {
+  const q = new URLSearchParams(location.search);
+  const champ = q.get('champ');
+  if (!champ) return false;
+  $('bChamp').value = champ;
+  const role = q.get('role');
+  if (role && [...$('bRole').options].some(o => o.value === role)) $('bRole').value = role;
+  const vs = q.get('vs');
+  if (vs) $('bVs').value = vs;
+  return true;
+}
+
 // Champion names power the autocomplete on both inputs.
 async function loadChampions() {
   try {
@@ -56,3 +71,4 @@ document.addEventListener('langchange', () => {
 });
 
 loadChampions();
+if (applyDeepLink()) $('bForm').requestSubmit();

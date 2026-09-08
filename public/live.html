@@ -6,8 +6,11 @@
   <title>Live Companion · AI LoL Coach</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
-  <main class="wrap">
+<body class="lg">
+  <div class="lg-shell">
+    <!-- filled by shell.js so every page shares one rail -->
+    <aside class="lg-side" id="rail"></aside>
+  <main class="lg-main">
     <div class="ov-bar" id="ovBar" hidden>
       <span class="ov-title" data-i18n="liveTitle">Live Companion</span>
       <span id="ovDotSlot"></span>
@@ -28,17 +31,10 @@
       <div class="ov-hint">Ctrl+Shift+X · Ctrl+Shift+H</div>
     </div>
     <header class="head">
-      <div class="langbar"><select id="lang" class="field lang" aria-label="Language"></select></div>
       <h1 data-i18n="liveTitle">Live Companion</h1>
       <p class="tag" data-i18n="liveTagline" data-i18n-html>In-game nudges from the official Live Client Data API · <em>informational only</em></p>
     </header>
 
-    <nav class="mainnav">
-      <a href="/" class="navbtn" data-i18n="navHome">Home</a>
-      <a href="/builds.html" class="navbtn" data-i18n="navBuilds">Builds</a>
-      <a href="/ranking.html" class="navbtn" data-i18n="navLadder">Ladder</a>
-      <a href="/live.html" class="navbtn active" data-i18n="navBot">Live Bot</a>
-    </nav>
 
     <div class="live-bar">
       <label class="muted" for="bucket" data-i18n="rankTier">Your rank tier:</label>
@@ -87,6 +83,8 @@
       <span data-i18n="liveFooter">ToS-safe: read-only, no automation. Show this on a 2nd monitor or in windowed mode.</span>
     </footer>
   </main>
+  </div>
+  <script src="shell.js"></script>
   <script src="i18n.js"></script>
   <script src="live.js"></script>
 </body>

@@ -6,7 +6,7 @@ import { canRiot, canGroq, canGemini } from './upstream.js';
 import { analyzePlayer } from './analyze.js';
 import { fetchLiveData, buildLiveResponse, liveCoachResponse } from './live.js';
 import { visionTip } from './llm.js';
-import { matchupBrief } from './meta.js';
+import { matchupBrief, metaPicks } from './meta.js';
 import { getNews } from './news.js';
 import { getChampions } from './ddragon.js';
 import { getAccount, getRank } from './riot.js';
@@ -288,6 +288,17 @@ app.get('/api/myrank', async (req, res) => {
     if (e.code === 404) return res.status(404).json({ error: 'not_found' });
     console.error('[myrank]', e.message);
     res.status(500).json({ error: 'myrank_failed' });
+  }
+});
+
+// Strongest picks on the current patch, by role — web-grounded, cached per
+// patch, so the home page costs one search a patch rather than one a visit.
+app.get('/api/meta-picks', async (req, res) => {
+  try {
+    res.json(await metaPicks({ lang: req.query.lang || 'en' }));
+  } catch (e) {
+    console.error('[meta-picks]', e.message);
+    res.json({ patch: null, roles: [] });
   }
 });
 

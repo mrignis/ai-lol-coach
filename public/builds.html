@@ -6,20 +6,16 @@
   <title>Builds · AI LoL Coach</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
-  <main class="wrap">
+<body class="lg">
+  <div class="lg-shell">
+    <!-- filled by shell.js so every page shares one rail -->
+    <aside class="lg-side" id="rail"></aside>
+  <main class="lg-main">
     <header class="head">
-      <div class="langbar"><select id="lang" class="field lang" aria-label="Language"></select></div>
       <h1 data-i18n="buildsTitle">Builds &amp; strategy</h1>
       <p class="tag" data-i18n="buildsTag">Current-patch build and game plan for any champion, looked up on the web.</p>
     </header>
 
-    <nav class="mainnav">
-      <a href="/" class="navbtn" data-i18n="navHome">Home</a>
-      <a href="/builds.html" class="navbtn active" data-i18n="navBuilds">Builds</a>
-      <a href="/ranking.html" class="navbtn" data-i18n="navLadder">Ladder</a>
-      <a href="/live.html" class="navbtn" data-i18n="navBot">Live Bot</a>
-    </nav>
 
     <form id="bForm" class="controls" autocomplete="off">
       <input id="bChamp" class="field" list="champList" type="text" data-i18n-ph="buildsChamp" placeholder="Champion" required />
@@ -51,8 +47,9 @@
       <p id="bSource" class="source muted"></p>
     </section>
 
-    <footer class="foot muted" data-i18n="footer">Official Riot API · post-game coaching only · not affiliated with Riot Games</footer>
   </main>
+  </div>
+  <script src="shell.js"></script>
   <script src="i18n.js"></script>
   <script src="builds.js"></script>
 </body>

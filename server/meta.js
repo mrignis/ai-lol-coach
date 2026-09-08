@@ -45,3 +45,57 @@ export async function matchupBrief({ champ, vs, role, lang = 'en' }) {
   if (r.text && r.source === 'gemini-search') await cache.set(key, out);
   return out;
 }
+
+// Strongest picks on the current patch, by role.
+//
+// There is no Riot endpoint for this — pick rates and win rates are computed by
+// third parties from match samples, not published. So it comes from the same
+// web-grounded lookup as the matchup brief, which reads live guide sites, and
+// is cached per patch: one search a patch, not one per visit.
+//
+// Champion names must come back exactly as Data Dragon spells them, because the
+// UI links each one straight into the build lookup.
+export async function metaPicks({ lang = 'en' } = {}) {
+  const patch = await currentPatch();
+  const key = `metapicks_${patch}_${lang}`;
+  const hit = await cache.get(key);
+  if (hit && hit.roles?.length) return hit;
+
+  const system =
+    'You are reporting the current League of Legends solo-queue meta. Use web search — pick and win ' +
+    'rates change every patch, so prefer fresh sources over memory. For EACH of the five roles name ' +
+    'the three strongest picks right now.\n' +
+    'Output one line per role and nothing else, in exactly this shape:\n' +
+    'TOP: Name, Name, Name\n' +
+    'JUNGLE: Name, Name, Name\n' +
+    'MIDDLE: Name, Name, Name\n' +
+    'BOTTOM: Name, Name, Name\n' +
+    'UTILITY: Name, Name, Name\n' +
+    'Champion names EXACTLY as the game client spells them, in English, with the same punctuation ' +
+    "(Kai'Sa, Kha'Zix, Nunu & Willump). No commentary, no numbers, no markdown.";
+
+  const r = await groundedAnswer({
+    system,
+    user: `League of Legends patch ${patch}. Which champions are strongest in solo queue right now, by role?`,
+  });
+  if (!r.text) return { patch, roles: [], source: r.source };
+
+  // Parse into structure rather than shipping a paragraph: the client renders
+  // each champion as a link into the build page.
+  const ROLES = ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'];
+  const roles = [];
+  for (const line of r.text.split('\n')) {
+    const m = line.match(/^\s*(TOP|JUNGLE|MIDDLE|BOTTOM|UTILITY)\s*:\s*(.+)$/i);
+    if (!m) continue;
+    const role = m[1].toUpperCase();
+    const champs = m[2].split(',').map(s => s.trim()).filter(Boolean).slice(0, 3);
+    if (champs.length) roles.push({ role, champions: champs });
+  }
+  roles.sort((a, b) => ROLES.indexOf(a.role) - ROLES.indexOf(b.role));
+
+  const out = { patch, roles, source: r.source, _ts: Date.now() };
+  // Only cache a web-grounded answer. Without search the model reports the meta
+  // of whenever it was trained, which would then be pinned for the whole patch.
+  if (roles.length === 5 && r.source === 'gemini-search') await cache.set(key, out);
+  return out;
+}

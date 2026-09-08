@@ -375,6 +375,30 @@ async function checkKeys() {
 
 // ── League news (patch + free rotation) ────────────────────────────────
 let lastNews = null;
+// ── Strong this patch ────────────────────────────────────────────────
+// One web search per patch on the server, so this is effectively free to show.
+// Each champion is a link into the build lookup: the card is a shortcut, not
+// a fact to admire.
+let lastMeta = null;
+async function loadMeta() {
+  try {
+    lastMeta = await (await fetch('/api/meta-picks?lang=' + getLang())).json();
+    renderMeta();
+  } catch { /* best-effort, like the news card */ }
+}
+function renderMeta() {
+  const m = lastMeta;
+  if (!m || !m.roles || !m.roles.length) { $('meta').hidden = true; return; }
+  $('metaPatch').textContent = m.patch ? String(m.patch) : '';
+  $('metaBody').innerHTML = m.roles.map(r =>
+    `<div class="meta-role"><span class="mr-role">${escapeHtml(tRole(r.role))}</span>` +
+    `<span class="mr-champs">${r.champions.map(c =>
+      `<a class="meta-champ" href="/builds.html?champ=${encodeURIComponent(c)}&role=${encodeURIComponent(r.role)}">${escapeHtml(c)}</a>`
+    ).join('')}</span></div>`
+  ).join('');
+  $('meta').hidden = false;
+}
+
 async function loadNews() {
   try {
     const region = localStorage.getItem('lolcoach_region') || 'euw1';
@@ -416,6 +440,9 @@ document.addEventListener('langchange', () => {
   if (lastData) render(lastData); // instant: chips, summary, template coach
   renderSaved();
   renderNews();
+  // Role labels are localized client-side; the champion names are not, so a
+  // repaint is enough and no second web search is spent.
+  renderMeta();
   renderLauncherBar();
   // The AI coach text was written in the previous language and render() can't
   // re-translate it — re-run the analysis so the whole report matches. Matches
@@ -443,6 +470,7 @@ if (savedId) $('riotId').value = savedId;
 renderSaved();
 loadRegions();
 loadNews();
+loadMeta();
 checkKeys();
 pollAppStatus();
 setInterval(pollAppStatus, 5000);
