@@ -546,7 +546,27 @@ function buildContextLines(me, gameTimeSec, role, ctx, overused = []) {
   });
 }
 
-const COACH_SYSTEM = (phase, lang, role, champBrief = '') => {
+// Howling Abyss, where most of the advice above would be about things that are
+// not on the map. Written as a replacement for the role and phase briefs rather
+// than an addition to them.
+const ARAM_BRIEF =
+  '\n\nTHIS IS ARAM on the Howling Abyss, NOT Summoner\'s Rift. The map has ONE lane and nothing ' +
+  'else: no jungle, no camps, no dragon, no Baron, no Rift Herald, no side lanes to split to. ' +
+  'Never mention any of them.\n' +
+  '- There is NO recall. The player cannot go back to shop. They buy only while dead or standing ' +
+  'in the fountain, so an item tip is only useful when they are dead or already at base.\n' +
+  '- Wards cannot be bought and the trinket slot is empty. Never tell them to ward or to sweep.\n' +
+  '- Everyone is always grouped, so the game is one long teamfight. What decides it is poke, ' +
+  'engage timing, cooldowns and who steps too far forward — not farm, not vision, not map moves.\n' +
+  '- Death timers are long and there is no way to reset safely, so a single death out of position ' +
+  'loses a fight the team cannot refuse. Dying is much more expensive here than on the Rift.\n' +
+  '- Health relics on the bridge are the only sustain besides champion healing; taking one at the ' +
+  'right moment is a real play.\n' +
+  '- Minions matter for pushing the wave to the enemy turret before a fight, not for gold pacing. ' +
+  'Never coach CS numbers.\n' +
+  'Coach the next fight: who to poke, whose cooldown to wait out, when to commit, where to stand.';
+
+const COACH_SYSTEM = (phase, lang, role, champBrief = '', aram = false) => {
   return 'You are sitting beside this player while they play, the way a friend who plays several ' +
     'divisions above them would. You can see the whole board. Say the one thing you would actually ' +
     'say out loud right now — and only if it is worth interrupting them for.\n' +
@@ -611,7 +631,9 @@ const COACH_SYSTEM = (phase, lang, role, champBrief = '') => {
     'BAD: "Ward the river and help your team." (no lever, no consequence)\n' +
 
     'Max 45 words. No preamble, no bullet labels, speak directly ("you"). ' +
-    PHASE_BRIEF[phase] + ' ' + (ROLE_BRIEF[role] || '') +
+    // On Howling Abyss the phase and role briefs describe a different map, so
+    // they are replaced outright rather than argued with.
+    (aram ? ARAM_BRIEF : PHASE_BRIEF[phase] + ' ' + (ROLE_BRIEF[role] || '')) +
     // Position says where they stand; this says what they are FOR. It comes
     // last so it wins where it contradicts the role default.
     (champBrief ? '\n' + champBrief : '') +
@@ -678,7 +700,7 @@ export function tipFault(text, myChampion) {
 
 export async function liveTip({ me, gameTimeSec, role, nudges, ctx, lang, recentTips = [], overused = [] }) {
   const phase = ctx?.phase || 'mid';
-  const system = COACH_SYSTEM(phase, lang, role, ctx?.champBrief || '');
+  const system = COACH_SYSTEM(phase, lang, role, ctx?.champBrief || '', !!ctx?.aram);
   const lines = buildContextLines(me, gameTimeSec, role, ctx, overused);
   // The glossary already forbids transliterating champion names, and it still
   // leaks one every few dozen tips ("Зері", "Ургот"). Naming the exact ten in
@@ -826,7 +848,7 @@ async function openaiVision({ system, user, imageBase64, minimapBase64 }) {
 
 export async function visionTip({ imageBase64, minimapBase64, me, gameTimeSec, role, ctx, lang }) {
   const phase = ctx?.phase || 'mid';
-  const system = COACH_SYSTEM(phase, lang, role, ctx?.champBrief || '') +
+  const system = COACH_SYSTEM(phase, lang, role, ctx?.champBrief || '', !!ctx?.aram) +
     ' You are ALSO given a live screenshot of their screen' +
     (minimapBase64 ? ' AND a zoomed-in crop of the minimap' : '') +
     '. READ THE MINIMAP FIRST: where are both teams, which enemies are MISSING from it, is the ' +

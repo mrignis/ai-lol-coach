@@ -50,6 +50,13 @@ function lastEventTime(events, name) {
   return t;
 }
 
+// Howling Abyss is a different game wearing the same client: one lane, no
+// jungle, no dragon or Baron, no wards to buy, and no recall — you shop only
+// while dead or standing in the fountain. Every benchmark, nudge and role brief
+// in here was written for Summoner's Rift, so the mode has to be known before
+// any of them are applied.
+export const isAram = data => /ARAM/i.test(data?.gameData?.gameMode || '');
+
 // Laning → mid → late. Advice that helps at 5:00 is noise at 30:00.
 function gamePhase(gameTime) {
   if (gameTime < 840) return 'early';   // < 14:00
@@ -192,6 +199,8 @@ async function gameContext(data, me, bucket = 'mid') {
       ? { champion: nemesisPlayer.championName, times: killsOnMe[nemesisId] }
       : null,
     phase: gamePhase(gameTime),
+    // Howling Abyss changes what advice is even possible — see isAram.
+    aram: isAram(data),
     // What this champion is FOR, not just where they stand — see archetype.js.
     champBrief,
     // Carried so the coach can say whether the player's CS is actually behind
@@ -240,6 +249,9 @@ function buildNudges(me, role, gameTime, events, gold, bucket = 'mid', ctx = nul
   const min = Math.max(gameTime / 60, 0.5);
   const bench = (BENCHMARKS[role] || BENCHMARKS.MIDDLE)[bucket];
   const phase = ctx?.phase || gamePhase(gameTime);
+  // On Howling Abyss half of these would be advice about things that do
+  // not exist there. Each one that assumes Summoner's Rift is gated below.
+  const aram = !!ctx?.aram;
   const nudges = [];
 
   // ── highest priority: you are dead ────────────────────────────────
@@ -284,13 +296,14 @@ function buildNudges(me, role, gameTime, events, gold, bucket = 'mid', ctx = nul
     }
   }
 
-  // Objective soft-timers.
-  const lastDragon = lastEventTime(events, 'DragonKill');
+  // Objective soft-timers. Howling Abyss has neither drake nor Baron, so a
+  // countdown to one would be advice about a monster that is not in the game.
+  const lastDragon = aram ? null : lastEventTime(events, 'DragonKill');
   if (lastDragon != null) {
     const next = lastDragon + DRAGON_RESPAWN - gameTime;
     if (next > 0 && next <= 45) nudges.push({ level: 'info', code: 'dragon', params: { sec: clamp(next) } });
   }
-  const baronNext = ctx ? ctx.baronUpIn : null;
+  const baronNext = aram || !ctx ? null : ctx.baronUpIn;
   if (baronNext != null && baronNext > 0 && baronNext <= 45) {
     nudges.push({ level: 'info', code: 'baron', params: { sec: clamp(baronNext) } });
   }
@@ -299,7 +312,7 @@ function buildNudges(me, role, gameTime, events, gold, bucket = 'mid', ctx = nul
   // Farming/vision advice matters in lane; late game it's noise next to
   // "don't get caught", so it's gated by phase.
   const csPerMin = me.scores.creepScore / min;
-  if (phase !== 'late' && gameTime > 180 && role !== 'UTILITY' && csPerMin < bench.csPerMin * 0.85) {
+  if (!aram && phase !== 'late' && gameTime > 180 && role !== 'UTILITY' && csPerMin < bench.csPerMin * 0.85) {
     // A jungler's CS comes from camps, so "grab the next wave" is wrong for them.
     nudges.push({
       level: 'warn',
@@ -308,7 +321,7 @@ function buildNudges(me, role, gameTime, events, gold, bucket = 'mid', ctx = nul
     });
   }
   const visPerMin = (me.scores.wardScore || 0) / min;
-  if (gameTime > 480 && visPerMin < bench.visPerMin * 0.7) {
+  if (!aram && gameTime > 480 && visPerMin < bench.visPerMin * 0.7) {
     nudges.push({ level: 'warn', code: phase === 'late' ? 'visionLate' : 'vision' });
   }
   if (me.scores.deaths >= 4) {
@@ -316,9 +329,11 @@ function buildNudges(me, role, gameTime, events, gold, bucket = 'mid', ctx = nul
   }
   // Unspent gold hurts more early; late you're expected to carry more.
   const goldCap = phase === 'early' ? 1400 : phase === 'mid' ? 1800 : 2600;
-  if (gold >= goldCap) nudges.push({ level: 'info', code: 'gold', params: { gold } });
+  // On Howling Abyss there is no recall: gold can only be spent on death or
+  // while standing in the fountain, so nagging about it mid-lane is useless.
+  if (gold >= goldCap && (!aram || me.isDead)) nudges.push({ level: 'info', code: 'gold', params: { gold } });
 
-  if (phase === 'early' && gameTime > 150 && (me.scores.wardScore || 0) < 2) {
+  if (!aram && phase === 'early' && gameTime > 150 && (me.scores.wardScore || 0) < 2) {
     nudges.push({ level: 'info', code: 'earlyWard' });
   }
 
@@ -327,7 +342,11 @@ function buildNudges(me, role, gameTime, events, gold, bucket = 'mid', ctx = nul
   // for a jungler (camps) and meaningless for a support (no farm at all).
   if (!nudges.length) {
     let code = phase === 'late' ? 'lateGroup' : phase === 'mid' ? 'midFocus' : 'earlyFocus';
-    if (phase === 'early') {
+    if (aram) {
+      // One lane, no roles, no objectives — the defaults have to say something
+      // that is true on Howling Abyss instead.
+      code = phase === 'late' ? 'aramLate' : phase === 'mid' ? 'aramMid' : 'aramEarly';
+    } else if (phase === 'early') {
       if (role === 'JUNGLE') code = 'earlyFocusJungle';
       else if (role === 'UTILITY') code = 'earlyFocusSupport';
     }

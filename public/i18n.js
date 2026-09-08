@@ -592,6 +592,9 @@ const NUDGES_LATE = {
     behindLevels: "You're {n} levels down — take safe side waves instead of contesting fights.",
     visionLate: 'No vision late is how you get picked — sweep before Baron, never walk in the dark.',
     lateGroup: "Late game: don't get caught alone. Group, ward Baron and only fight with vision.",
+    aramEarly: "ARAM: poke them down before you commit — nobody can back out to heal.",
+    aramMid: "ARAM: never step up alone. One pick here loses the fight your team can't refuse.",
+    aramLate: "ARAM: death timers are long now. One bad step ends it — wait for their cooldowns.",
     midFocus: 'Mid game: take vision before objectives and look for a pick instead of forcing a 5v5.',
   },
   uk: {
@@ -603,6 +606,9 @@ const NUDGES_LATE = {
     behindLevels: 'Відставання в рівнях: {n} — фарми бічні хвилі замість того, щоб лізти в бійки.',
     visionLate: 'Без огляду в пізній грі тебе спіймають — зчищай ворожі варди перед бароном і не ходи наосліп.',
     lateGroup: 'Пізня гра: не ходи сам. Тримайся команди, став варди біля барона й бийся лише з оглядом.',
+    aramEarly: "АРАМ: спершу продавлюй поукою — тут ніхто не може відійти й полікуватись.",
+    aramMid: "АРАМ: не виходь уперед сам. Один пік тут програє бій, від якого команда не втече.",
+    aramLate: "АРАМ: таймери смерті вже довгі. Один крок не туди — і кінець; дочекайся їхніх кулдаунів.",
     midFocus: 'Середина гри: постав огляд перед об’єктами й шукай пік замість того, щоб форсити 5в5.',
   },
   fr: {
@@ -614,6 +620,9 @@ const NUDGES_LATE = {
     behindLevels: 'Tu as {n} niveaux de retard — prends des vagues latérales au lieu des combats.',
     visionLate: "Sans vision en late tu te fais prendre — sweep avant le Baron, n'avance jamais à l'aveugle.",
     lateGroup: 'Late game : ne te fais pas attraper seul. Regroupe-toi, ward le Baron, combats avec vision.',
+    aramEarly: "ARAM : poke-les avant de t'engager — personne ne peut rentrer se soigner.",
+    aramMid: "ARAM : n'avance jamais seul. Un pick ici fait perdre un combat que ton équipe ne peut pas refuser.",
+    aramLate: "ARAM : les temps de réapparition sont longs. Un pas de trop et c'est fini — attends leurs cooldowns.",
     midFocus: 'Mid game : pose la vision avant les objectifs et cherche un pick plutôt qu’un 5v5 forcé.',
   },
   de: {
@@ -625,6 +634,9 @@ const NUDGES_LATE = {
     behindLevels: 'Du bist {n} Level zurück — nimm sichere Seitenwellen statt Kämpfe zu suchen.',
     visionLate: 'Ohne Sicht im Late wirst du gepickt — sweepe vor Baron, lauf nie ins Dunkle.',
     lateGroup: 'Late Game: lass dich nicht allein erwischen. Gruppiere, warde Baron, kämpfe nur mit Sicht.',
+    aramEarly: "ARAM: poke sie runter, bevor du reingehst — niemand kann zum Heilen zurück.",
+    aramMid: "ARAM: geh nie allein vor. Ein Pick verliert hier den Kampf, den dein Team nicht ablehnen kann.",
+    aramLate: "ARAM: die Todeszeiten sind lang. Ein Schritt zu weit beendet das Spiel — warte ihre Cooldowns ab.",
     midFocus: 'Mid Game: Sicht vor Zielen setzen und einen Pick suchen statt 5v5 zu erzwingen.',
   },
   es: {
@@ -636,6 +648,9 @@ const NUDGES_LATE = {
     behindLevels: 'Vas {n} niveles por detrás — coge oleadas laterales en vez de pelear.',
     visionLate: 'Sin visión en late te cogen — barre antes del Barón, nunca camines a ciegas.',
     lateGroup: 'Late game: que no te pillen solo. Agrúpate, pon visión en Barón y pelea con visión.',
+    aramEarly: "ARAM: hazles poke antes de entrar — nadie puede volver a curarse.",
+    aramMid: "ARAM: nunca avances solo. Un pick aquí pierde la pelea que tu equipo no puede rechazar.",
+    aramLate: "ARAM: los tiempos de muerte son largos. Un paso de más y se acabó — espera sus cooldowns.",
     midFocus: 'Mid game: pon visión antes de los objetivos y busca un pick en vez de forzar 5v5.',
   },
   pl: {
@@ -647,6 +662,9 @@ const NUDGES_LATE = {
     behindLevels: 'Jesteś {n} poziomy do tyłu — bierz bezpieczne boczne fale zamiast walk.',
     visionLate: 'Brak wizji w late to złapanie — czyść przed Baronem, nie chodź na ślepo.',
     lateGroup: 'Late game: nie daj się złapać samemu. Grupuj się, warduj Barona, walcz z wizją.',
+    aramEarly: "ARAM: najpierw poke, potem wejście — nikt nie wróci się leczyć.",
+    aramMid: "ARAM: nigdy nie wychodź sam. Jeden pick przegrywa tu walkę, od której nie da się uciec.",
+    aramLate: "ARAM: czasy odrodzenia są długie. Jeden zły krok kończy grę — poczekaj na ich cooldowny.",
     midFocus: 'Mid game: postaw wizję przed celami i szukaj picka zamiast wymuszać 5v5.',
   },
   pt: {
@@ -658,6 +676,9 @@ const NUDGES_LATE = {
     behindLevels: 'Você está {n} níveis atrás — pegue ondas laterais em vez de brigar.',
     visionLate: 'Sem visão no late você é pego — limpe antes do Barão, nunca ande no escuro.',
     lateGroup: 'Late game: não seja pego sozinho. Agrupe, warde o Barão e lute só com visão.',
+    aramEarly: "ARAM: dê poke antes de entrar — ninguém pode voltar para se curar.",
+    aramMid: "ARAM: nunca avance sozinho. Um pick aqui perde a luta que seu time não pode recusar.",
+    aramLate: "ARAM: os tempos de morte são longos. Um passo a mais acaba o jogo — espere os cooldowns deles.",
     midFocus: 'Mid game: ponha visão antes dos objetivos e procure um pick em vez de forçar 5v5.',
   },
   ru: {
@@ -669,6 +690,9 @@ const NUDGES_LATE = {
     behindLevels: 'Ты на {n} уровня позади — фарми боковые волны вместо драк.',
     visionLate: 'Без обзора в поздней игре тебя поймают — чисти перед бароном, не ходи вслепую.',
     lateGroup: 'Поздняя игра: не ходи один. Держись команды, вардь барона, дерись только с обзором.',
+    aramEarly: "АРАМ: сначала продавливай пойком — тут никто не может отойти и полечиться.",
+    aramMid: "АРАМ: никогда не выходи вперёд один. Один пик здесь проигрывает бой, от которого не уйти.",
+    aramLate: "АРАМ: таймеры смерти уже длинные. Один лишний шаг — и конец; дождись их кулдаунов.",
     midFocus: 'Середина игры: ставь обзор перед объектами и ищи пик вместо форса 5в5.',
   },
   tr: {
@@ -680,6 +704,9 @@ const NUDGES_LATE = {
     behindLevels: '{n} seviye geridesin — savaş aramak yerine güvenli yan koridorları al.',
     visionLate: 'Geç oyunda görüşsüz yakalanırsın — Baron öncesi süpür, karanlığa yürüme.',
     lateGroup: 'Geç oyun: tek yakalanma. Gruplan, Baron’u wardla ve sadece görüşle savaş.',
+    aramEarly: "ARAM: girmeden önce poke at — kimse iyileşmek için geri dönemez.",
+    aramMid: "ARAM: asla tek başına öne çıkma. Buradaki bir pick, takımının reddedemeyeceği savaşı kaybettirir.",
+    aramLate: "ARAM: ölüm süreleri uzun. Bir fazla adım oyunu bitirir — bekle, cooldownları dolsun.",
     midFocus: 'Orta oyun: hedeflerden önce görüş al ve 5v5 zorlamak yerine pick ara.',
   },
   ko: {
@@ -691,6 +718,9 @@ const NUDGES_LATE = {
     behindLevels: '{n}레벨 뒤처졌다 — 싸움 대신 안전한 사이드 웨이브를 챙겨라.',
     visionLate: '후반에 시야가 없으면 짤린다 — 바론 전에 와드를 지우고 어둠으로 걸어가지 마라.',
     lateGroup: '후반: 혼자 짤리지 마라. 뭉치고 바론에 와드 박고 시야가 있을 때만 싸워라.',
+    aramEarly: "칼바람: 들어가기 전에 포킹으로 체력을 빼라 — 여기선 아무도 회복하러 돌아갈 수 없다.",
+    aramMid: "칼바람: 절대 혼자 앞서지 마라. 여기서 한 명 짤리면 피할 수 없는 한타를 진다.",
+    aramLate: "칼바람: 부활 시간이 길어졌다. 한 걸음만 잘못 나가도 끝이다 — 상대 쿨을 기다려라.",
     midFocus: '중반: 오브젝트 전에 시야를 잡고 5대5를 강요하지 말고 각을 노려라.',
   },
   zh: {
@@ -702,6 +732,9 @@ const NUDGES_LATE = {
     behindLevels: '你落后{n}级——去吃安全的边路兵线，别参团送。',
     visionLate: '后期没视野就会被抓——打大龙前先扫眼，别走黑区。',
     lateGroup: '后期：别单独被抓。集合、做好大龙视野，有视野再开团。',
+    aramEarly: "大乱斗：先消耗再开团——这里没人能回城补血。",
+    aramMid: "大乱斗：绝不要一个人上前。被抓一个就会输掉躲不掉的团战。",
+    aramLate: "大乱斗：复活时间已经很长。多走一步就结束了——等他们技能交完。",
     midFocus: '中期：打资源前先做视野，找机会抓单而不是硬开5v5。',
   },
   ja: {
@@ -713,6 +746,9 @@ const NUDGES_LATE = {
     behindLevels: '{n}レベル遅れている——戦闘より安全なサイドウェーブを取れ。',
     visionLate: '終盤に視界がないと捕まる——バロン前にスイープし、暗闇を歩くな。',
     lateGroup: '終盤：単独で捕まるな。集合し、バロンにワードを置き、視界がある時だけ戦え。',
+    aramEarly: "ARAM：仕掛ける前にポークで削れ — ここでは誰も回復に戻れない。",
+    aramMid: "ARAM：絶対に一人で前に出るな。ここで1人取られると、断れない集団戦に負ける。",
+    aramLate: "ARAM：復活時間が長い。一歩踏み込みすぎれば終わりだ — 相手のクールダウンを待て。",
     midFocus: '中盤：オブジェクト前に視界を取り、5v5を強要せずピックを狙え。',
   },
   vi: {
@@ -724,6 +760,9 @@ const NUDGES_LATE = {
     behindLevels: 'Bạn thua {n} cấp — hãy ăn lính đường biên an toàn thay vì tham chiến.',
     visionLate: 'Cuối trận không mắt là bị bắt lẻ — quét mắt trước Baron, đừng đi vào vùng tối.',
     lateGroup: 'Cuối trận: đừng bị bắt lẻ. Tụ tập, cắm mắt Baron và chỉ đánh khi có tầm nhìn.',
+    aramEarly: "ARAM: poke cho họ mất máu trước khi lao vào — ở đây không ai về nhà hồi máu được.",
+    aramMid: "ARAM: đừng bao giờ tiến lên một mình. Bị bắt lẻ ở đây là thua giao tranh không thể tránh.",
+    aramLate: "ARAM: thời gian hồi sinh đã dài. Bước lỡ một nhịp là hết — chờ hồi chiêu của họ.",
     midFocus: 'Giữa trận: cắm mắt trước mục tiêu và tìm cơ hội bắt lẻ thay vì ép giao tranh 5v5.',
   },
 };
