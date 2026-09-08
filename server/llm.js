@@ -1,6 +1,9 @@
 import { config } from './config.js';
 import { METRICS, BENCHMARKS } from './benchmarks.js';
 import { groqTarget, geminiTarget, openaiTarget, canGroq, canGemini, canOpenAI } from './upstream.js';
+// Per-language terminology lives in glossary.js — it outgrew this file, and
+// now covers twelve languages instead of one.
+import { LANG_TERMS } from './glossary.js';
 
 const fmt = (key, v) => (METRICS[key] ? METRICS[key].fmt(v) : String(v));
 
@@ -59,69 +62,6 @@ const FORMAT_RULE =
   'written as "1. ", "2. ", "3. " and nothing else. Never write the same word twice in a row, never ' +
   'leave a sentence unfinished, and re-read every sentence before you output it: each one must be ' +
   'complete, grammatical and actually mean something — never pad with a word you are unsure of.';
-
-// Per-language glossary, kept in sync with public/i18n.js so the AI prose and
-// the static UI call the same thing by the same name. Without it the model
-// keeps minting transliterations ("візій", "джунг", "спавн") that no player
-// says. Only languages we have verified terminology for belong here.
-const LANG_TERMS = {
-  uk: [
-    'vision / vision score = огляд (NOT "візія", NOT "бачення"; uncountable — "огляду за хвилину", never "оглядів")',
-    // Verbs are listed with the imperative the tip should actually use — given
-    // only the dictionary form the model opened tips with "Ставити…".
-    'ward = вард / варди; control ward = контрольний вард; to ward → command form "Постав вард" ' +
-      '(never "Ставити"); sweep = чистити ворожі варди → "Почисти"',
-    'lane = лінія; mid = мід; top = топ; wave = хвиля; minion = міньйон; to push = пушити',
-    'jungle = ліс (NOT "джунгл"); jungler = лісник; camp = кемп; full clear = повний зачист лісу',
-    'objective = об’єкт; spawn / respawn = поява / відродження (NOT "спавн"); pit = яма',
-    'kill participation = участь у вбивствах; deaths per game = смертей за гру',
-    'gold per minute = золота за хвилину; damage per minute = шкоди за хвилину; CS per minute = КС за хвилину',
-    'trade = розмін; last-hit = добивати; back / recall = повернення на базу; roam = роум, роумити',
-    'gank = ганк, ганкати; crowd control = контроль; cooldown = кулдаун; peel = прикривати',
-    'shield = щит; heal = лікування; carry = керрі; front line = передня лінія; positioning = позиціювання',
-    'ADC / bot carry = АДК (in Cyrillic, never "ADC"); support = сапорт; ultimate = ульта; dash = ривок',
-    'inhibitor = інгібітор (NOT "інхібітор", NOT "інхіботор"); super minions = суперміньйони',
-    'Baron buff = баф барона (NOT "баронський баф"); turret / tower = вежа; base = база; river = річка',
-    // Borrowed forms players actually use at the keyboard. These are correct —
-    // the rule against transliteration was over-applied and produced textbook
-    // phrasing no one says.
-    'Jungle buffs are named the way players say them: blue buff = блу баф, red buff = ред баф ' +
-      '("синій баф" / "червоний баф" are also fine). Dragon = дракон or дрейк, both natural.',
-    'Write a borrowed term FULLY in Cyrillic or not at all. "Baron-баф" and "Dragon-яма" are wrong ' +
-      'in both directions: either "баф барона" and "яма Барона", or leave the proper name alone as ' +
-      'its own Latin word. Never hyphenate the two alphabets together.',
-    // Actual garbage this model has produced. Naming the exact mistake works
-    // better than restating the rule it already broke.
-    'NEVER write any of these, they are not Ukrainian words or are plain wrong: ' +
-      '"воронка"/"воронок" (invented, vision is огляд) · "позивний" (meaningless here) · ' +
-      '"ADC", "ADC-й" (write АДК) · "vs" (write "проти" or use a dash) · "спавн" (write поява) · ' +
-      '"dmg", "gold", "CS per min", "GPM", "DPM" (write the stat out: шкоди за хвилину, ' +
-      'золота за хвилину, КС за хвилину) · "візія"/"візій" (write огляд)',
-    'Never glue an English word to a Ukrainian ending with a hyphen. Every noun must agree with ' +
-      'its adjective in gender and number ("захисне вміння", never "захисний уміння").',
-    // One 55-minute game spelled the same ally "Kai\'Sa", "Кай’Sa" and "Кай’Са".
-    'Champion names: copy them EXACTLY as the client spells them, in Latin letters, every time — ' +
-      'Kai\'Sa, Kha\'Zix, Nunu & Willump. Never transliterate a champion name into Cyrillic and ' +
-      'never mix alphabets inside one name.',
-    'Fighting someone is "проти <Champion>" or "з <Champion>" — never "у <Champion>". ' +
-      'Contesting an objective is "не борись за баф" / "не контестуй барона" — "оскаржувати" is a ' +
-      'legal term and is wrong here.',
-    // One game called the Rift Herald "Герольд" twice and "Вісник" once.
-    'Neutral objectives have ONE name each, always the same one: Rift Herald = Вісник ' +
-      '(never "Герольд"), Baron Nashor = Барон, Void Grubs = личинки, Elder Dragon = Старійшина, ' +
-      'Rift Scuttler = краб. Jungle camps: Gromp, Krugs, Raptors, Wolves — keep these in English.',
-    // "мідa" and "виході до мідa" — a Latin "a" ending a Cyrillic word.
-    'Never put a Latin letter inside a Cyrillic word. Words like "міда", "барона", "дракона" end ' +
-      'in the Cyrillic letter "а" — check every word ending before you output it.',
-    // Seven tips in one game wrote things like "яма Oracle Lens" and "почисти
-    // Oracle Lens огляд" — the sweeper trinket used as a place or an adjective.
-    'Trinkets are things you USE, never places and never adjectives. Oracle Lens and Farsight ' +
-      'Alteration are items in your trinket slot: write "почисти варди" or "почисти варди ' +
-      'підмітальником", NEVER "почисти Oracle Lens огляд", "яма Oracle Lens" or "Барона Oracle ' +
-      'Lens". An item name may never be glued to a location — the pit is "яма Барона", the river ' +
-      'is "річка", and no item name belongs in either.',
-  ].map(s => '  ' + s).join('\n'),
-};
 
 // Half-translated coaching text is the single most common complaint: Ukrainian
 // sentences came back stuffed with "vision score", "carries", "GPM", invented
