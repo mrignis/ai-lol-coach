@@ -1,4 +1,4 @@
-# Install a built version over the running app — and refuse to do it mid-match.
+# Install a built version over the running app -- and refuse to do it mid-match.
 #
 #   powershell -ExecutionPolicy Bypass -File scripts\install.ps1
 #   powershell -ExecutionPolicy Bypass -File scripts\install.ps1 -Force
@@ -22,7 +22,7 @@ $installed = Join-Path $env:LOCALAPPDATA "Programs\$exeName\$exeName.exe"
 function Test-GameRunning {
   $client = New-Object System.Net.Sockets.TcpClient
   try {
-    # League binds 2999 only while you are in a match — loading screen included.
+    # League binds 2999 only while you are in a match -- loading screen included.
     $ok = $client.ConnectAsync('127.0.0.1', 2999).Wait(1500)
     return $ok -and $client.Connected
   } catch {
@@ -34,7 +34,7 @@ function Test-GameRunning {
 
 $setup = Get-ChildItem (Join-Path $root 'dist') -Filter "$exeName Setup *.exe" |
   Sort-Object LastWriteTime -Descending | Select-Object -First 1
-if (-not $setup) { Write-Error "No installer in dist/ — run npm run dist first."; exit 1 }
+if (-not $setup) { Write-Error "No installer in dist/ -- run npm run dist first."; exit 1 }
 
 if (Test-GameRunning) {
   if (-not $Force) {

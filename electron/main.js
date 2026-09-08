@@ -196,6 +196,24 @@ function registerAppRoutes() {
       inGame: wasInGame,
     });
   });
+  // The overlay is transparent, so any window taller than its content is a
+  // rectangle of whatever happens to be behind it — the launcher, or the game.
+  // The page measures itself and the window follows, which also means the frame
+  // shrinks when a card is switched off and grows when a long tip arrives,
+  // instead of being a fixed box the content rattles around in.
+  expressApp.post('/api/app/overlay-size', (req, res) => {
+    const height = Math.round(Number(req.body?.height));
+    if (!alive(win) || !Number.isFinite(height)) return res.json({ ok: false });
+    const b = win.getBounds();
+    // Clamped: a mid-render measurement of 0 must never collapse the widget, and
+    // it should never grow past the display it is sitting on.
+    const maxH = screen.getDisplayMatching(b).workArea.height - 40;
+    const want = Math.max(90, Math.min(height, maxH));
+    // A 1px jitter every poll would fight the user's own resize.
+    if (Math.abs(want - b.height) > 2) win.setBounds({ ...b, height: want });
+    res.json({ ok: true, height: want });
+  });
+
   expressApp.post('/api/app/widget', (req, res) => {
     const action = String(req.body?.action || 'toggle');
     if (action === 'show') { autoShown = false; showWidget(); }

@@ -211,8 +211,40 @@ function applyOpts() {
   localStorage.setItem(OV_KEY, JSON.stringify(ovOpts));
 }
 
+// Report our real content height so the window can shrink to fit. A transparent
+// window taller than its content is not empty space — it is a rectangle of the
+// launcher, or the game, showing through.
+let lastSentHeight = 0;
+function reportHeight() {
+  if (!IS_OVERLAY) return;
+  const bar = document.querySelector('.ov-bar');
+  const settings = $('ovSettings');
+  const body = $('widget').hidden ? $('status') : $('widget');
+  const parts = [bar, settings, body].filter(el => el && !el.hidden);
+  if (!parts.length) return;
+  const bottom = Math.max(...parts.map(el => el.getBoundingClientRect().bottom));
+  // 6px to match the page's own bottom breathing room, not a magic number.
+  const height = Math.ceil(bottom + 6);
+  if (!height || Math.abs(height - lastSentHeight) < 3) return;
+  lastSentHeight = height;
+  fetch('/api/app/overlay-size', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ height }),
+  }).catch(() => { /* running in a plain browser, not Electron */ });
+}
+
 if (IS_OVERLAY) {
   document.body.classList.add('overlay');
+  // Anything that changes height — a tip arriving, a nudge clearing, the
+  // settings panel opening, the user changing the scale — goes through here.
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(() => reportHeight());
+    for (const el of [$('widget'), $('status'), $('ovSettings'), document.querySelector('.ov-bar')]) {
+      if (el) ro.observe(el);
+    }
+  }
+  setInterval(reportHeight, 2000); // catches a card being hidden outright
   $('ovBar').hidden = false;
   $('ovClose').addEventListener('click', () => window.close());
   $('ovGear').addEventListener('click', () => { $('ovSettings').hidden = !$('ovSettings').hidden; });
