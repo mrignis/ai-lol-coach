@@ -817,6 +817,37 @@ async function groqVision({ system, user, imageBase64, minimapBase64 }) {
   return data.choices?.[0]?.message?.content?.trim() || null;
 }
 
+// Same wire format as Groq's, because Groq copies OpenAI's. Vision used to skip
+// OpenAI entirely and go to Gemini, whose free quota is intermittent — one
+// recorded game got 11 screenshot tips, the next got none, and the feature
+// looked dead. gpt-5.x reads images, so it leads now.
+async function openaiVision({ system, user, imageBase64, minimapBase64 }) {
+  const content = [{ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }];
+  if (minimapBase64) content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${minimapBase64}` } });
+  content.push({ type: 'text', text: user });
+  const { url, headers } = openaiTarget();
+  const model = config.llm.openaiModel;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'system', content: system }, { role: 'user', content }],
+      // Reasoning is billed against this ceiling on gpt-5.x and runs ~512 even
+      // for one sentence, so a 300 cap would return an empty message.
+      ...(/^gpt-5/.test(model)
+        ? { max_completion_tokens: 2000 }
+        : { max_tokens: 400, temperature: 0.6 }),
+    }),
+    // Screenshots are large and the model reasons before answering; the text
+    // path's 30s is not enough headroom here.
+    signal: AbortSignal.timeout(45000),
+  });
+  if (!res.ok) throw new Error(`openai_vision_${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() || null;
+}
+
 export async function visionTip({ imageBase64, minimapBase64, me, gameTimeSec, role, ctx, lang }) {
   const phase = ctx?.phase || 'mid';
   const system = COACH_SYSTEM(phase, lang, role, ctx?.champBrief || '') +
@@ -830,8 +861,10 @@ export async function visionTip({ imageBase64, minimapBase64, me, gameTimeSec, r
   lines.push('Based on the screenshot and this state: what should the player do right now?');
   const args = { system, user: lines.join('\n'), imageBase64, minimapBase64 };
 
-  // Same chain idea as text tips: Gemini first, Groq's multimodal Llama-4 next.
+  // Same order as the text chain: whoever the player actually pays for leads.
+  // Gemini stays as a fallback for installs with no OpenAI key of their own.
   const attempts = [];
+  if (canOpenAI) attempts.push(['openai', openaiVision]);
   if (canGemini) attempts.push(['gemini', geminiVision]);
   if (canGroq && config.llm.groqVisionModel) attempts.push(['groq', groqVision]);
   let lastErr = null;

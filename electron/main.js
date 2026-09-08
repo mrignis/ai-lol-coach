@@ -265,11 +265,12 @@ async function visionLoop() {
         minimap: minimap.toJPEG(75).toString('base64'),
       }),
     });
-    // Screenshot tips run on Gemini, whose free quota is exhausted for days at
-    // a time. Retrying every minute regardless meant capturing a 1280px frame,
+    // Counts refusals, whichever provider is serving. This was written when
+    // screenshot tips ran on Gemini's free quota, which is exhausted for days
+    // at a time: retrying every minute meant capturing a 1280px frame,
     // JPEG-encoding it twice and shipping ~200KB — all discarded — during a
-    // game, which is exactly when the CPU is worth protecting. Back off after
-    // repeated refusals and recover the moment one succeeds.
+    // game, which is exactly when the CPU is worth protecting. An install with
+    // its own OpenAI key should never reach the skip states at all.
     const ok = res.ok && (await res.json().catch(() => ({}))).ok;
     visionMisses = ok ? 0 : Math.min(visionMisses + 1, VISION_BACKOFF.length - 1);
   } catch {
