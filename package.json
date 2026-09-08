@@ -1,64 +1,64 @@
-﻿{
-    "name":  "lol-coach",
-    "version":  "0.6.0",
-    "private":  true,
-    "type":  "module",
-    "description":  "AI LoL Coach â€” personal weakness analysis from the official Riot API",
-    "main":  "electron/main.js",
-    "scripts":  {
-                    "start":  "electron .",
-                    "server":  "node server/index.js",
-                    "dev":  "node --watch server/index.js",
-                    "probe":  "node scripts/probe.js",
-                    "icon":  "node scripts/make-icon.js",
-                    "dist":  "electron-builder --win"
-                },
-    "engines":  {
-                    "node":  "\u003e=18"
-                },
-    "dependencies":  {
-                         "dotenv":  "^16.4.5",
-                         "express":  "^4.19.2"
-                     },
-    "devDependencies":  {
-                            "electron":  "^43.1.1",
-                            "electron-builder":  "^25.1.8"
-                        },
-    "build":  {
-                  "appId":  "com.mrignis.lolcoach",
-                  "productName":  "AI LoL Coach",
-                  "directories":  {
-                                      "output":  "dist",
-                                      "buildResources":  "build"
-                                  },
-                  "files":  [
-                                "electron/**/*",
-                                "server/**/*",
-                                "public/**/*",
-                                "build/icon.png",
-                                "package.json"
-                            ],
-                  "extraResources":  [
-                                         {
-                                             "from":  ".env.example",
-                                             "to":  ".env.example"
-                                         },
-                                         {
-                                             "from":  "build-config/proxy.env",
-                                             "to":  ".env"
-                                         }
-                                     ],
-                  "win":  {
-                              "target":  "nsis",
-                              "icon":  "build/icon.png"
-                          },
-                  "nsis":  {
-                               "oneClick":  false,
-                               "perMachine":  false,
-                               "allowToChangeInstallationDirectory":  true,
-                               "createDesktopShortcut":  true,
-                               "createStartMenuShortcut":  true,
-                               "shortcutName":  "AI LoL Coach"
-                           }
-              }
+{
+  "name": "lol-coach",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "description": "AI LoL Coach â€” personal weakness analysis from the official Riot API",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "server": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "probe": "node scripts/probe.js",
+    "icon": "node scripts/make-icon.js",
+    "dist": "electron-builder --win"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "electron": "^43.1.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.mrignis.lolcoach",
+    "productName": "AI LoL Coach",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "server/**/*",
+      "public/**/*",
+      "build/icon.png",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".env.example",
+        "to": ".env.example"
+      },
+      {
+        "from": "build-config/proxy.env",
+        "to": ".env"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AI LoL Coach"
+    }
+  }
 }
